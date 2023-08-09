@@ -1,5 +1,6 @@
 from django.db import models
-
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class ComponenteCurricular(models.Model):
     codigo = models.CharField(primary_key=True, max_length=7)
@@ -11,15 +12,6 @@ class ComponenteCurricular(models.Model):
 
     def __str__(self):
         return "{} - {}".format(self.codigo, self.nome.upper())
-
-
-class Professor(models.Model):
-    nome_prof = models.CharField(max_length=80)
-    horas_semanais = models.IntegerField(default=0)
-    turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
-
-    def __str__(self):
-        return self.nome_prof
 
 
 class Turma(models.Model):
@@ -37,3 +29,10 @@ class Turma(models.Model):
         return "{} - Turma {}".format(self.cod_componente, self.num_turma)
 
 
+class Professor(models.Model):
+    nome_prof = models.CharField(max_length=80)
+    horas_semanais = models.IntegerField(default=0)
+    turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
+
+    def __str__(self):
+        return self.nome_prof
