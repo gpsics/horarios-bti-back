@@ -1,6 +1,4 @@
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 class ComponenteCurricular(models.Model):
     codigo = models.CharField(primary_key=True, max_length=7)
