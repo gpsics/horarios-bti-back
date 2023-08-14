@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import post_save, m2m_changed
+from django.dispatch import receiver
 
 class ComponenteCurricular(models.Model):
     codigo = models.CharField(primary_key=True, max_length=7)
@@ -29,8 +31,28 @@ class Turma(models.Model):
 
 class Professor(models.Model):
     nome_prof = models.CharField(max_length=80)
-    horas_semanais = models.IntegerField(default=0)
+    horas_semanais = models.DecimalField(max_digits=2, decimal_places=0, default=0)
     turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
 
     def __str__(self):
         return self.nome_prof
+
+def calcular_horas(instance):
+    horas = 0
+    for turmas in instance.turmas.all():
+        horas += turmas.cod_componente.carga_horaria / 15
+    instance.horas_semanais = horas
+    instance.save()
+
+
+@receiver(post_save, sender=Professor)
+def calcular_horas_criacao(sender, instance, created, **kwargs):
+    if created:
+        calcular_horas(instance)
+
+
+@receiver(m2m_changed, sender=Professor.turmas.through)
+def calcular_horas_alteracao(sender, instance, action, **kwargs):
+    if action in ['post_add', 'post_remove', 'post_clear']:
+        calcular_horas(instance)
+

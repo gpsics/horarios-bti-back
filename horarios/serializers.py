@@ -3,18 +3,43 @@ from rest_framework import serializers
 
 
 class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
+    obrigatorio = serializers.SerializerMethodField()
+
     class Meta:
         model = ComponenteCurricular
-        fields = ['codigo', 'nome', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio', 'url']
+        fields = ['url', 'codigo', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio']
 
-
-class TurmaSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario', 'professor', 'url']
+    def get_obrigatorio(self, componente):
+        return 'Obrigatorio' if componente.obrigatorio else 'Opcional'
 
 
 class ProfessorSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Professor
-        fields = ['nome_prof', 'horas_semanais', 'turmas', 'url']
+        fields = ['url', 'nome_prof', 'horas_semanais', 'turmas']
+
+
+class TurmaSerializer(serializers.HyperlinkedModelSerializer):
+    ##professor_turma = ProfessorSerializer(many=True)
+
+    class Meta:
+        model = Turma
+        fields = ['url', 'cod_componente', 'num_turma', 'horario', 'professor_turma']
+
+
+class ListaTurmasProfessorSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Turma
+        fields = ['cod_componente', 'num_turma', 'horario', 'professor_turma']
+
+
+class ListaTurmaComponenteSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Turma
+        fields = ['cod_componente', 'num_turma', 'horario', 'professor_turma']
+
+
+class ListaTurmaSemestreSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Turma
+        fields = ['cod_componente', 'num_turma', 'horario']
