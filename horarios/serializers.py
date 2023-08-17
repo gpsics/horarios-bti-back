@@ -3,14 +3,14 @@ from rest_framework import serializers
 
 
 class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
-    obrigatorio = serializers.SerializerMethodField()
+    ##obrigatorio = serializers.SerializerMethodField()
 
     class Meta:
         model = ComponenteCurricular
-        fields = ['url', 'codigo', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio']
+        fields = ['url', 'codigo', 'nome', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio']
 
-    def get_obrigatorio(self, componente):
-        return 'Obrigatorio' if componente.obrigatorio else 'Opcional'
+    ##def get_obrigatorio(self, componente):
+        ##return 'Obrigatorio' if componente.obrigatorio else 'Opcional'
 
 
 class ProfessorSerializer(serializers.HyperlinkedModelSerializer):
