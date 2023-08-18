@@ -48,7 +48,7 @@ class Turma(models.Model):
 class Professor(models.Model):
     nome_prof = models.CharField(max_length=80)
     horas_semanais = models.DecimalField(max_digits=2, decimal_places=0, default=0)
-    turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
+    #turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Professor'
@@ -59,23 +59,40 @@ class Professor(models.Model):
 
 
 @receiver(post_save, sender=Professor)
-def calcular_horas_criacao(sender, instance, created=True, **kwargs):
+def corrige_horas(sender, instance, created, **kwargs):
     if created:
         instance.horas_semanais = 0
-
-        for turmas in instance.turmas.all():
-            instance.horas_semanais += turmas.cod_componente.carga_horaria / 15
-
         instance.save()
 
 
-@receiver(m2m_changed, sender=Professor.turmas.through)
-def calcular_horas_alteracao(sender, instance, action, **kwargs):
-    if action in ['post_add', 'post_remove', 'post_clear']:
-        horas = 0
-        for turmas in instance.turmas.all():
-            horas += turmas.cod_componente.carga_horaria / 15
+#@receiver(m2m_changed, sender=Professor.turmas.through)
+#def calcular_horas_alteracao(sender, instance, action, **kwargs):
+    #if action in ['post_add', 'post_remove', 'post_clear']:
+        #horas = 0
+        #for turmas in instance.turmas.all():
+            #horas += turmas.cod_componente.carga_horaria / 15
 
-        instance.horas_semanais = horas
-        instance.save()
+        #instance.horas_semanais = horas
+        #instance.save()
 
+
+#@receiver(post_save, sender=Turma)
+#def calcular_horas_criacao(sender, instance, created=True, **kwargs):
+    #if created:
+        #horas = 0
+        #quant = instance.professor.all().count()
+
+        #for profs in instance.professor.all():
+            #horas = instance.cod_componente.carga_horaria / 15
+            #profs.horas_semanais += horas/instance.professor.all().count()
+            #profs.save()
+
+#@receiver(m2m_changed, sender=Turma.professor.through)
+#def calcular_horas_alteracao(sender, instance, action, reverse, model, pk_set, **kwargs):
+    #if action in ['post_add', 'post_remove', 'post_clear']:
+        #for id_profs in pk_set:
+            #professor = Professor.objects.get(pk=id_profs)
+            #professor.horas_semanais += (instance.cod_componente.carga_horaria / 15)
+            #professor.save()
+
+        #instance.save()
