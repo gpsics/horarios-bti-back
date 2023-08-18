@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 from .views import UserViewSet, GroupViewSet
-from horarios.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaTurmasProfessor, ListaTurmasComponente
+from horarios.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaTurmasProfessor, ListaTurmasComponente, ListaTurmasSemestre
 from rest_framework.authtoken import views
 
 router = routers.DefaultRouter()
@@ -16,7 +16,8 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-token-auth/', views.obtain_auth_token, name='api-token-auth'),
     path('admin/', admin.site.urls),
-    path('professores/<int:pk>/turmas/', ListaTurmasProfessor.as_view()),
-    path('componentes/<pk>/turmas/', ListaTurmasComponente.as_view())
+    path('turmas/professores/<int:pk>/', ListaTurmasProfessor.as_view()),
+    path('turmas/componentes/<cod>/', ListaTurmasComponente.as_view()),
+    path('turmas/semestre/<int:semestre>/', ListaTurmasSemestre.as_view())
 ]
 

@@ -13,33 +13,19 @@ class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
         ##return 'Obrigatorio' if componente.obrigatorio else 'Opcional'
 
 
+class TurmaSerializer(serializers.HyperlinkedModelSerializer):
+    #professor_turma = ProfessorSerializer(many=True)
+
+    class Meta:
+        model = Turma
+        fields = ['url', 'cod_componente', 'num_turma', 'horario', 'professor']
+
+
 class ProfessorSerializer(serializers.HyperlinkedModelSerializer):
+    #turma_professor = TurmaSerializer(many=True)
+
     class Meta:
         model = Professor
-        fields = ['url', 'nome_prof', 'horas_semanais', 'turmas']
+        fields = ['url', 'nome_prof', 'horas_semanais']
+        #fields = ['url', 'nome_prof', 'horas_semanais', 'turma_professor']
 
-
-class TurmaSerializer(serializers.HyperlinkedModelSerializer):
-    ##professor_turma = ProfessorSerializer(many=True)
-
-    class Meta:
-        model = Turma
-        fields = ['url', 'cod_componente', 'num_turma', 'horario', 'professor_turma']
-
-
-class ListaTurmasProfessorSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario', 'professor_turma']
-
-
-class ListaTurmaComponenteSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario', 'professor_turma']
-
-
-class ListaTurmaSemestreSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario']

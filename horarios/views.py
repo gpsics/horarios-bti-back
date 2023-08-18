@@ -1,6 +1,6 @@
 from rest_framework import viewsets, generics
 from rest_framework import permissions, authentication
-from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, ListaTurmasProfessorSerializer, ListaTurmaComponenteSerializer
+from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer
 from .models import ComponenteCurricular, Professor, Turma
 
 
@@ -27,20 +27,31 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
 class ListaTurmasProfessor(generics.ListAPIView):
     def get_queryset(self):
-        query_set = Turma.objects.filter(professor_turma=self.kwargs['pk'])
-        return query_set
+        query_set_turmas = Turma.objects.filter(professor=self.kwargs['pk'])
+        return query_set_turmas
 
-    serializer_class = ListaTurmasProfessorSerializer
+    serializer_class = TurmaSerializer
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
 
 
 class ListaTurmasComponente(generics.ListAPIView):
     def get_queryset(self):
-        query_set = Turma.objects.filter(cod_componente=self.kwargs['pk'])
-        return query_set
+        query_set_turmas = Turma.objects.filter(cod_componente=self.kwargs['cod'])
+        return query_set_turmas
 
-    serializer_class = ListaTurmaComponenteSerializer
+    serializer_class = TurmaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
+
+
+class ListaTurmasSemestre(generics.ListAPIView):
+    def get_queryset(self):
+        query_set_turmas = Turma.objects.filter(cod_componente=ComponenteCurricular.objects.get(num_semestre=self.kwargs['semestre']))
+
+        return query_set_turmas
+
+    serializer_class = TurmaSerializer
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
 
