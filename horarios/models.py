@@ -9,11 +9,17 @@ from decimal import Decimal
 
 # Modelo de Componente Curricular com seus devidos atributos
 class ComponenteCurricular(models.Model):
+    DEPARTAMENTO = (
+        ("DETEC", "Departamento de Engenharias e Tecnologia"),
+        ("DCSAH", "Departamento de Ciências Sociais Aplicadas e Humanas"),
+        ("DECEN", "Departamento de Ciências Exatas e Naturais")
+    )
+
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
     nome = models.CharField(max_length=80)
     num_semestre = models.IntegerField()
     carga_horaria = models.IntegerField()
-    departamento = models.CharField(max_length=80)
+    departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
     obrigatorio = models.BooleanField(default=False)
 
     class Meta:
