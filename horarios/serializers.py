@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 # Classe serializadora de Componente Curricular
 class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
+    # departamento = serializers.SerializerMethodField()
     ##obrigatorio = serializers.SerializerMethodField()
 
     class Meta:
