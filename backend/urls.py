@@ -18,6 +18,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('turmas/professores/<int:pk>/', ListaTurmasProfessor.as_view()),
     path('turmas/componentes/<cod>/', ListaTurmasComponente.as_view()),
-    path('turmas/semestre/<int:semestre>/', ListaTurmasSemestre.as_view())
+    path('turmas/semestre/<semestre>/', ListaTurmasSemestre.as_view())
 ]
 

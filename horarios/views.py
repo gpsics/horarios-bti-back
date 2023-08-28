@@ -69,7 +69,8 @@ class ListaTurmasComponente(generics.ListAPIView):
 class ListaTurmasSemestre(generics.ListAPIView):
     # Função que realiza a busca e retorna os objetos de Turma com base semestre
     def get_queryset(self):
-        query_set_turmas = Turma.objects.filter(cod_componente=ComponenteCurricular.objects.get(num_semestre=self.kwargs['semestre']))
+        query_set_componenetes = ComponenteCurricular.objects.filter(num_semestre=self.kwargs['semestre']).values('codigo')
+        query_set_turmas = Turma.objects.filter(cod_componente__in=query_set_componenetes)
 
         return query_set_turmas
 
