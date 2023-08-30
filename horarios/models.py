@@ -61,9 +61,8 @@ class Turma(models.Model):
 
 # Modelo de Professor com seus devidos atributos
 class Professor(models.Model):
-    nome_prof = models.CharField(max_length=80)
+    nome_prof = models.CharField(max_length=80, unique=True)
     horas_semanais = models.DecimalField(max_digits=2, decimal_places=0, default=0)
-    #turmas = models.ManyToManyField("Turma", related_name='professor_turma', null=True, blank=True)
 
     class Meta:
         # Nome que será representado esse modelo
