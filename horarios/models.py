@@ -16,7 +16,7 @@ class ComponenteCurricular(models.Model):
     )
 
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
-    nome = models.CharField(max_length=80)
+    nome_comp = models.CharField(max_length=80)
     num_semestre = models.IntegerField()
     carga_horaria = models.IntegerField()
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
@@ -34,8 +34,12 @@ class ComponenteCurricular(models.Model):
             CheckConstraint(check=Q(carga_horaria__gte="0"), name="carga_horaria_maior_0")
         ]
 
+    def save(self, *args, **kwargs):
+        self.nome_comp = self.nome_comp.upper()
+        super(ComponenteCurricular, self).save(*args, **kwargs)
+
     def __str__(self):
-        return "{} - {}".format(self.codigo, self.nome.upper())
+        return "{} - {}".format(self.codigo, self.nome_comp)
 
 
 # Modelo de Turma Curricular com seus devidos atributos e relacionamentos
@@ -68,6 +72,10 @@ class Professor(models.Model):
         # Nome que será representado esse modelo
         verbose_name = 'Professor'
         verbose_name_plural = 'Professores'
+
+    def save(self, *args, **kwargs):
+        self.nome_prof = self.nome_prof.upper()
+        super(Professor, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.nome_prof

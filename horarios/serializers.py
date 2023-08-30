@@ -6,7 +6,7 @@ from rest_framework import serializers
 class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = ComponenteCurricular
-        fields = ['codigo', 'nome', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio', 'url']
+        fields = ['codigo', 'nome_comp', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio', 'url']
 
 
 # Classe serializadora de Turma
