@@ -39,10 +39,6 @@ class ComponenteCurricular(models.Model):
     def save(self, *args, **kwargs):
         self.codigo = self.codigo.upper()
         self.nome_comp = self.nome_comp.upper()
-
-        print(self.num_semestre)
-
-
         super(ComponenteCurricular, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -54,6 +50,7 @@ class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
     horario = models.CharField(max_length=15)
+    num_vagas = models.PositiveSmallIntegerField(default=0)
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
     class Meta:

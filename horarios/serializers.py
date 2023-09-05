@@ -13,7 +13,7 @@ class ComponenteCurricularSerializer(serializers.HyperlinkedModelSerializer):
 class TurmaSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario', 'professor', 'url']
+        fields = ['cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor', 'url']
 
 
 # Classe serializadora de Professor
