@@ -17,7 +17,7 @@ class ComponenteCurricular(models.Model):
 
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
     nome_comp = models.CharField(max_length=80)
-    num_semestre = models.IntegerField()
+    num_semestre = models.IntegerField(blank=True, default=0)
     carga_horaria = models.IntegerField()
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
     obrigatorio = models.BooleanField(default=False)
@@ -31,11 +31,18 @@ class ComponenteCurricular(models.Model):
         constraints = [
             CheckConstraint(check=Q(num_semestre__gte="0"), name="semestre_maior_igual_0"),
             CheckConstraint(check=Q(num_semestre__lte="6"), name="semestre_menor_igual_6"),
-            CheckConstraint(check=Q(carga_horaria__gte="0"), name="carga_horaria_maior_0")
+            CheckConstraint(check=Q(carga_horaria__gte="0"), name="carga_horaria_maior_0"),
+            CheckConstraint(check=~Q(obrigatorio=True, num_semestre="0"),
+                            name="semestre_diferente_zero_componente_obrigatorio")
         ]
 
     def save(self, *args, **kwargs):
+        self.codigo = self.codigo.upper()
         self.nome_comp = self.nome_comp.upper()
+
+        print(self.num_semestre)
+
+
         super(ComponenteCurricular, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -58,6 +65,10 @@ class Turma(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['cod_componente', 'num_turma'], name='unique_cod_componente_num_turma'),
         ]
+
+    def save(self, *args, **kwargs):
+        self.horario = self.horario.upper()
+        super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):
         return "{} - Turma {}".format(self.cod_componente, self.num_turma)
