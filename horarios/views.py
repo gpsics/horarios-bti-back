@@ -1,6 +1,6 @@
 from rest_framework import viewsets, generics
 from rest_framework import permissions, authentication
-from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer
+from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, HorariosSerializer
 from .models import ComponenteCurricular, Professor, Turma
 
 
@@ -45,7 +45,7 @@ class ListaTurmasProfessor(generics.ListAPIView):
         return query_set_turmas
 
     # Forma de como as atributos dos objetos vão ser apresentados na tela
-    serializer_class = TurmaSerializer
+    serializer_class = HorariosSerializer
     # É necessária está autenticado para conseguir as informações
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
@@ -59,7 +59,7 @@ class ListaTurmasComponente(generics.ListAPIView):
         return query_set_turmas
 
     # Forma de como as atributos dos objetos vão ser apresentados na tela
-    serializer_class = TurmaSerializer
+    serializer_class = HorariosSerializer
     # É necessária está autenticado para conseguir as informações
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
@@ -75,7 +75,7 @@ class ListaTurmasSemestre(generics.ListAPIView):
         return query_set_turmas
 
     # Forma de como as atributos dos objetos vão ser apresentados na tela
-    serializer_class = TurmaSerializer
+    serializer_class = HorariosSerializer
     # É necessária está autenticado para conseguir as informações
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
