@@ -26,4 +26,4 @@ class ProfessorSerializer(serializers.HyperlinkedModelSerializer):
 class HorariosSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Turma
-        fields = ['horario', 'url']
+        fields = ['horario']
