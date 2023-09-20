@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics
 from rest_framework import permissions, authentication
 from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, HorariosSerializer
-from .models import ComponenteCurricular, Professor, Turma
+from horarios.models import ComponenteCurricular, Professor, Turma
 
 
 # View que está mostrando todos os objetos criados de Componente Curricular

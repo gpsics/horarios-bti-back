@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 from .views import UserViewSet, GroupViewSet
-from horarios.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaTurmasProfessor, ListaTurmasComponente, ListaTurmasSemestre, ListaHorariosComponente, ListaHorariosSemestre, ListaHorariosProfessor
+from horarios.api.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaTurmasProfessor, ListaTurmasComponente, ListaTurmasSemestre, ListaHorariosComponente, ListaHorariosSemestre, ListaHorariosProfessor
 from rest_framework.authtoken import views
 
 router = routers.DefaultRouter()

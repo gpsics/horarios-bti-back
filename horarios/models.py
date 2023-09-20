@@ -4,7 +4,9 @@ from django.db.models.constraints import CheckConstraint
 from django.db.models import Q
 from django.dispatch import receiver
 from django.core.validators import MinLengthValidator
+from django.core.exceptions import ValidationError
 from decimal import Decimal
+import re
 
 
 # Modelo de Componente Curricular com seus devidos atributos
@@ -45,11 +47,19 @@ class ComponenteCurricular(models.Model):
         return "{} - {}".format(self.codigo, self.nome_comp)
 
 
+def validar_horario(value):
+    horarios = value.split()
+
+    for horario in horarios:
+        if not re.match(r'^[2-6]{1}[MTN]{1}[1-6]{2}$', horario) or not re.match(r'^[2-6]{2}[MTN]{1}[1-6]{2}$', horario) or not not re.match(r'^[2-6]{3}[MTN]{1}[1-6]{2}$', horario):
+            raise ValidationError('formato_invalido_horario')
+
+
 # Modelo de Turma Curricular com seus devidos atributos e relacionamentos
 class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
-    horario = models.CharField(max_length=15)
+    horario = models.CharField(max_length=15, validators=[validar_horario])
     num_vagas = models.PositiveSmallIntegerField(default=0)
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
@@ -109,4 +119,5 @@ def calcular_horas_alteracao(sender, instance, model, action, **kwargs):
         for profs in instance.professor.all():
             profs.horas_semanais += Decimal(horas)
             profs.save()
+
 
