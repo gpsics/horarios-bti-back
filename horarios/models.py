@@ -9,6 +9,22 @@ from decimal import Decimal
 import re
 
 
+def validar_horario(value):
+    horarios = value.split()
+
+    if not len(horarios) < 4:
+        raise ValidationError('Horário inválido')
+
+    for horario in horarios:
+        if not re.match(r'^[2-6]{1}[MTN]{1}[1-6]{2}$', horario): #  or not re.match(r'^[2-6]{2}[MTN]{1}[1-6]{2}$', horario) or not not re.match(r'^[2-6]{3}[MTN]{1}[1-6]{2}$', horario)
+            raise ValidationError('Formato inválido do horário')
+
+
+def validar_carga_horaria(value):
+    if not value > 0 or not value % 15 != 0:
+        raise ValidationError('Carga horária deve maior que 0 e divisível por 15.')
+
+
 # Modelo de Componente Curricular com seus devidos atributos
 class ComponenteCurricular(models.Model):
     DEPARTAMENTO = (
@@ -18,9 +34,9 @@ class ComponenteCurricular(models.Model):
     )
 
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
-    nome_comp = models.CharField(max_length=80)
+    nome_comp = models.CharField(max_length=80, error_messages="O nome do componente deve ter no mínimo 1 caractere e no máximo 80.")
     num_semestre = models.IntegerField(blank=True, default=0)
-    carga_horaria = models.IntegerField()
+    carga_horaria = models.PositiveSmallIntegerField(validators=[validar_carga_horaria])
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
     obrigatorio = models.BooleanField(default=False)
 
@@ -47,20 +63,12 @@ class ComponenteCurricular(models.Model):
         return "{} - {}".format(self.codigo, self.nome_comp)
 
 
-def validar_horario(value):
-    horarios = value.split()
-
-    for horario in horarios:
-        if not re.match(r'^[2-6]{1}[MTN]{1}[1-6]{2}$', horario) or not re.match(r'^[2-6]{2}[MTN]{1}[1-6]{2}$', horario) or not not re.match(r'^[2-6]{3}[MTN]{1}[1-6]{2}$', horario):
-            raise ValidationError('formato_invalido_horario')
-
-
 # Modelo de Turma Curricular com seus devidos atributos e relacionamentos
 class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
     horario = models.CharField(max_length=15, validators=[validar_horario])
-    num_vagas = models.PositiveSmallIntegerField(default=0)
+    num_vagas = models.PositiveSmallIntegerField(default=0, error_messages="O número de vagas deve no mínimo 0.")
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
     class Meta:
@@ -70,11 +78,25 @@ class Turma(models.Model):
 
         # Restrição de especificando que a junção cod_componente e num_turma são atributos únicos
         constraints = [
-            models.UniqueConstraint(fields=['cod_componente', 'num_turma'], name='unique_cod_componente_num_turma'),
+            models.UniqueConstraint(fields=['cod_componente', 'num_turma'], name='Já existe uma turma com esse número.'),
         ]
 
     def save(self, *args, **kwargs):
-        self.horario = self.horario.upper()
+        horarios = self.horario.split()
+
+        if len(horarios) == 1:
+            self.horario = self.horario.upper()
+        elif len(horarios) == 2 and len(horarios[0]) == 4:
+            if horarios[0][2] == horarios[1][2]:
+                dias = []
+                turno = horarios[0][1]
+
+                dias.append(horarios[0][0])
+                dias.append(horarios[1][0])
+
+                horario = dias[0] + dias[1] + turno + horarios[0][2] + horarios[0][3]
+                self.horario = horario.upper()
+
         super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):
