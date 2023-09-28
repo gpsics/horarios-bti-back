@@ -9,15 +9,58 @@ from decimal import Decimal
 import re
 
 
-def validar_horario(value):
-    horarios = value.split()
+def validar_formato_horario(horario):
+    if len(horario) == 4:
+        return re.match(r'^[2-6][MmTtNn][1-6]{2}$', horario)
+    elif len(horario) == 5:
+        return re.match(r'^[2-6]{2}[MmTtNn][1-6]{2}$', horario)
+    elif len(horario) == 6:
+        return re.match(r'^[2-6]{3}[MmTtNn][1-6]{2}$', horario) or re.match(r'^[2-6][MmTtNn][1-6]{4}$', horario)
 
-    if not len(horarios) < 4:
+    return False
+
+
+def validar_tamanho_horario(horarios, carga_horaria):
+    tam_hr = len(horarios)
+
+    if carga_horaria == 30:
+        return tam_hr == 4
+    elif carga_horaria == 60:
+        return tam_hr == 5 or tam_hr == 6 or tam_hr == 9
+    elif carga_horaria == 90:
+        return tam_hr == 6 or tam_hr == 8 or tam_hr == 10 or tam_hr == 12
+
+
+def validar_horario(horarios, carga_horaria):
+    vetor_horarios = horarios.split()
+
+    if not len(vetor_horarios) < 4:
         raise ValidationError('Horário inválido')
 
-    for horario in horarios:
-        if not re.match(r'^[2-6]{1}[MTN]{1}[1-6]{2}$', horario): #  or not re.match(r'^[2-6]{2}[MTN]{1}[1-6]{2}$', horario) or not not re.match(r'^[2-6]{3}[MTN]{1}[1-6]{2}$', horario)
+    for index in range(len(vetor_horarios)):
+        if not validar_formato_horario(vetor_horarios[index]):
             raise ValidationError('Formato inválido do horário')
+
+        dias_ordenado = "".join(sorted(re.sub(r'[MmNnTt].*', '', vetor_horarios[index])))
+        horas_ordenado = "".join(sorted(re.sub(r'^.*[MmNnTt]', '', vetor_horarios[index])))
+        turno = (re.search(r'[MmNnTt]', vetor_horarios[index])).group().upper()
+
+        vetor_horarios[index] = dias_ordenado + turno + horas_ordenado
+
+    if not validar_tamanho_horario(horarios, carga_horaria):
+        raise ValidationError('Horário inválido')
+
+    if len(vetor_horarios) == 2:
+        if len(horarios[0]) == 4:
+            turno = horarios[0][1].upper()
+
+            if horarios[0][2] == horarios[1][2]:
+                dias = "".join(sorted(horarios[0][0] + horarios[1][0]))
+                horas = "".join(sorted(horarios[0][2] + horarios[0][3]))
+
+                return dias + turno + horas
+
+    return " ".join(vetor_horarios)
 
 
 def validar_carga_horaria(value):
@@ -34,7 +77,8 @@ class ComponenteCurricular(models.Model):
     )
 
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
-    nome_comp = models.CharField(max_length=80, error_messages="O nome do componente deve ter no mínimo 1 caractere e no máximo 80.")
+    nome_comp = models.CharField(max_length=80, error_messages="O nome do componente deve ter no mínimo 1 caractere e "
+                                                               "no máximo 80.")
     num_semestre = models.IntegerField(blank=True, default=0)
     carga_horaria = models.PositiveSmallIntegerField(validators=[validar_carga_horaria])
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
@@ -67,7 +111,7 @@ class ComponenteCurricular(models.Model):
 class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
-    horario = models.CharField(max_length=15, validators=[validar_horario])
+    horario = models.CharField(max_length=15)
     num_vagas = models.PositiveSmallIntegerField(default=0, error_messages="O número de vagas deve no mínimo 0.")
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
@@ -78,25 +122,11 @@ class Turma(models.Model):
 
         # Restrição de especificando que a junção cod_componente e num_turma são atributos únicos
         constraints = [
-            models.UniqueConstraint(fields=['cod_componente', 'num_turma'], name='Já existe uma turma com esse número.'),
+            models.UniqueConstraint(fields=['cod_componente', 'num_turma'], name='Já existe turma com esse número.'),
         ]
 
     def save(self, *args, **kwargs):
-        horarios = self.horario.split()
-
-        if len(horarios) == 1:
-            self.horario = self.horario.upper()
-        elif len(horarios) == 2 and len(horarios[0]) == 4:
-            if horarios[0][2] == horarios[1][2]:
-                dias = []
-                turno = horarios[0][1]
-
-                dias.append(horarios[0][0])
-                dias.append(horarios[1][0])
-
-                horario = dias[0] + dias[1] + turno + horarios[0][2] + horarios[0][3]
-                self.horario = horario.upper()
-
+        self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
         super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):
