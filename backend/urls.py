@@ -16,9 +16,11 @@ urlpatterns = [
     path('', include(router.urls)),
     path('api-token-auth/', views.obtain_auth_token, name='api-token-auth'),
     path('admin/', admin.site.urls),
+
     path('turmas/professores/<int:pk>/', ListaTurmasProfessor.as_view()),
     path('turmas/componentes/<cod>/', ListaTurmasComponente.as_view()),
     path('turmas/semestre/<semestre>/', ListaTurmasSemestre.as_view()),
+
     path('horarios/professores/<int:pk>/', ListaHorariosProfessor.as_view()),
     path('horarios/componentes/<cod>/', ListaHorariosComponente.as_view()),
     path('horarios/semestre/<semestre>/', ListaHorariosSemestre.as_view())

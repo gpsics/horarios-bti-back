@@ -9,6 +9,7 @@ from decimal import Decimal
 import re
 
 
+# Função responsável por validar e verificar o formato/quantidade de horários
 def validar_horario(horarios, carga_horaria):
     vetor_horarios = horarios.split()
     contador_h = 0
@@ -31,7 +32,7 @@ def validar_horario(horarios, carga_horaria):
             raise ValidationError('Formato inválido do horário')
 
         # Incrementa a quantidade de horas no horario no contador_h
-        contador_h += len(horas_ordenado)
+        contador_h += len(dias_ordenado) * len(horas_ordenado)
 
         turno = (re.search(r'[MmNnTt]', vetor_horarios[index])).group().upper()
 
@@ -40,46 +41,12 @@ def validar_horario(horarios, carga_horaria):
 
     # Verifica se a quantidade de horas presente no horário está correto
     if not contador_h == carga_horaria / 15:
-        raise ValidationError('Horário inválido')
+        raise ValidationError('Quantidade de horas inválida no horário.')
 
-    # return " ".join(vetor_horarios)
-
-    vetor = []
-    
-    for index in range(len(vetor_horarios)):
-        if vetor:
-            for index_temp in range(len(vetor)):
-                dia1 = "".join(re.sub(r'[MNT].*', '', vetor[index_temp]))
-                turno1 = re.search(r'[MNT]', vetor[index_temp]).group()
-                hora1 = "".join(re.sub(r'^.*[MNT]', '', vetor[index_temp]))
-
-                dia2 = "".join(re.sub(r'[MNT].*', '', vetor_horarios[index]))
-                turno2 = re.search(r'[MNT]', vetor_horarios[index]).group()
-                hora2 = "".join(re.sub(r'^.*[MNT]', '', vetor_horarios[index]))
-
-                if turno1 == turno2:
-                    dias = re.sub(r'[MNT].*', '', vetor[index_temp])
-                    horas = re.sub(r'^.*[MNT]', '', vetor[index_temp])
-
-                    if hora1 == hora2:
-                        dias = "".join(sorted(re.sub(r'[MNT].*', '', vetor[index_temp]))) + "".join(sorted(re.sub(r'[MNT].*', '', vetor_horarios[index])))
-                        # vetor[index_temp] = dias + turno1 + horas
-
-                    if dia1 == dia2 and int(hora1[-1::]) + 1 == int(hora2[-1::]):
-                        horas = "".join(sorted(re.sub(r'^.*[MNT]', '', vetor[index_temp]))) + "".join(sorted(re.sub(r'^.*[MNT]', '', vetor_horarios[index])))
-                        # vetor[index_temp] = dias + turno1 + horas
-
-                    vetor[index_temp] = dias + turno1 + horas
-                    break
-                elif (index_temp + 1) == len(vetor):
-                    vetor.append(vetor_horarios[index])
-                    
-        else:
-            vetor.append(vetor_horarios[index])
-
-    return " ".join(vetor)
+    return " ".join(vetor_horarios)
 
 
+# Função que verifica e validar se o valor da carga horária está correta
 def validar_carga_horaria(value):
     if not value > 0 or not value % 15 != 0:
         raise ValidationError('Carga horária deve maior que 0 e divisível por 15.')
@@ -128,7 +95,7 @@ class ComponenteCurricular(models.Model):
 class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
-    horario = models.CharField(max_length=40)
+    horario = models.CharField(max_length=80)
     num_vagas = models.PositiveSmallIntegerField(default=0, error_messages="O número de vagas deve no mínimo 0.")
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
