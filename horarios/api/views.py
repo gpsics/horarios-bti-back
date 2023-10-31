@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics
 from rest_framework import permissions, authentication
-from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer
-from .models import ComponenteCurricular, Professor, Turma
+from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, HorariosSerializer
+from horarios.models import ComponenteCurricular, Professor, Turma
 
 
 # View que está mostrando todos os objetos criados de Componente Curricular
@@ -37,21 +37,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
 
 
-# APIView que está mostrando os objetos de Turma de maneira personalizada
-class ListaTurmasProfessor(generics.ListAPIView):
-    # Função que realiza a busca que retorno os objetos de Turma com id equivalente ao da url
-    def get_queryset(self):
-        query_set_turmas = Turma.objects.filter(professor=self.kwargs['pk'])
-        return query_set_turmas
-
-    # Forma de como as atributos dos objetos vão ser apresentados na tela
-    serializer_class = TurmaSerializer
-    # É necessária está autenticado para conseguir as informações
-    permission_classes = [permissions.IsAuthenticated]
-    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
-
-
-# APIView que está mostrando os objetos de Turma de maneira personalizada
+# APIView que mostra todos os objetos de Turmas de mesmo componente
 class ListaTurmasComponente(generics.ListAPIView):
     # Função que realiza a busca que retorno os objetos de Turma com cod equivalente ao da url
     def get_queryset(self):
@@ -65,7 +51,7 @@ class ListaTurmasComponente(generics.ListAPIView):
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
 
 
-# APIView que está mostrando os objetos de Turma de maneira personalizada
+# APIView que mostra todos os objetos de Turmas com componente de mesmo semestre
 class ListaTurmasSemestre(generics.ListAPIView):
     # Função que realiza a busca e retorna os objetos de Turma com base semestre
     def get_queryset(self):
@@ -76,6 +62,65 @@ class ListaTurmasSemestre(generics.ListAPIView):
 
     # Forma de como as atributos dos objetos vão ser apresentados na tela
     serializer_class = TurmaSerializer
+    # É necessária está autenticado para conseguir as informações
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
+
+
+# APIView que mostra todos os objetos de Turmas de mesmo professor
+class ListaTurmasProfessor(generics.ListAPIView):
+    # Função que realiza a busca que retorno os objetos de Turma com id equivalente ao da url
+    def get_queryset(self):
+        query_set_turmas = Turma.objects.filter(professor=self.kwargs['pk'])
+        return query_set_turmas
+
+    # Forma de como as atributos dos objetos vão ser apresentados na tela
+    serializer_class = TurmaSerializer
+    # É necessária está autenticado para conseguir as informações
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
+
+
+# APIView que mostra todos os horários de Turmas com mesmo componentes
+class ListaHorariosComponente(generics.ListAPIView):
+    # Função que realiza a busca que retorno os objetos de Turma com cod equivalente ao da url
+    def get_queryset(self):
+        query_set_turmas = Turma.objects.filter(cod_componente=self.kwargs['cod'])
+        return query_set_turmas
+
+    # Forma de como as atributos dos objetos vão ser apresentados na tela
+    serializer_class = HorariosSerializer
+    # É necessária está autenticado para conseguir as informações
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
+
+
+# APIView que mostra todos os horários de Turmas com componente de mesmo semestre
+class ListaHorariosSemestre(generics.ListAPIView):
+    # Função que realiza a busca e retorna os objetos de Turma com base semestre
+    def get_queryset(self):
+        query_set_componenetes = ComponenteCurricular.objects.filter(num_semestre=self.kwargs['semestre']).values(
+            'codigo')
+        query_set_turmas = Turma.objects.filter(cod_componente__in=query_set_componenetes)
+
+        return query_set_turmas
+
+    # Forma de como as atributos dos objetos vão ser apresentados na tela
+    serializer_class = HorariosSerializer
+    # É necessária está autenticado para conseguir as informações
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
+
+
+# APIView que mostra todos os horários de Turmas de mesmo professor
+class ListaHorariosProfessor(generics.ListAPIView):
+    # Função que realiza a busca que retorno os objetos de Turma com id equivalente ao da url
+    def get_queryset(self):
+        query_set_turmas = Turma.objects.filter(professor=self.kwargs['pk'])
+        return query_set_turmas
+
+    # Forma de como as atributos dos objetos vão ser apresentados na tela
+    serializer_class = HorariosSerializer
     # É necessária está autenticado para conseguir as informações
     permission_classes = [permissions.IsAuthenticated]
     authentication_classes = [authentication.TokenAuthentication, authentication.SessionAuthentication]
