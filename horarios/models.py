@@ -48,7 +48,7 @@ def validar_horario(horarios, carga_horaria):
 
 # Função que verifica e validar se o valor da carga horária está correta
 def validar_carga_horaria(value):
-    if not value > 0 or not value % 15 != 0:
+    if not value > 0 or not value % 15 == 0:
         raise ValidationError('Carga horária deve maior que 0 e divisível por 15.')
 
 
