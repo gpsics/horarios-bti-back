@@ -100,7 +100,6 @@ class Turma(models.Model):
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
     class Meta:
-        # Nome que será representado esse modelo
         verbose_name = 'Turma'
         verbose_name_plural = 'Turmas'
 
@@ -110,7 +109,9 @@ class Turma(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
+        print(self.horario)
+
+        # self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
         super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):

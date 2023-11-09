@@ -1,6 +1,7 @@
 from rest_framework import viewsets, generics
-from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, HorariosSerializer
+from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, TurmaSerializerFormatado, HorariosSerializer
 from horarios.models import ComponenteCurricular, Professor, Turma
+import re
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -22,8 +23,13 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 # View que está mostrando todos os objetos criados de Turma
 class TurmaViewSet(viewsets.ModelViewSet):
     queryset = Turma.objects.all()
-    serializer_class = TurmaSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return TurmaSerializerFormatado
+
+        return TurmaSerializer
 
 
 # APIView que mostra todos os horários de Turmas com mesmo componentes

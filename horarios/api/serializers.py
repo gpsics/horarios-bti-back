@@ -31,9 +31,13 @@ class ProfessorSerializer(serializers.ModelSerializer):
 
 
 # Serializer dos dados de uma Turma
-class TurmaSerializer(serializers.HyperlinkedModelSerializer):
-    cod_componente = ComponenteCurricularSerializer()
-    professor = ProfessorSerializer(many=True)
+class TurmaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Turma
+        fields = ['id', 'cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor']
+
+
+class TurmaSerializerFormatado(serializers.ModelSerializer):
     horario = serializers.SerializerMethodField('get_horario')
 
     class Meta:
@@ -61,9 +65,6 @@ class TurmaSerializer(serializers.HyperlinkedModelSerializer):
                         turno2 = "".join(match2[2])
                         hora2 = "".join(match2[3])
 
-                        print(index_temp)
-                        print(horario + " / " + horario_temp)
-
                         if turno1 == turno2:
                             aux_dias = "".join(match1[1])
                             aux_horas = "".join(match1[3])
@@ -71,7 +72,6 @@ class TurmaSerializer(serializers.HyperlinkedModelSerializer):
 
                             if hora1 == hora2:
                                 aux_dias = "".join(sorted(match1[1] + match2[1]))
-                                # print(horario + " e " + horario_temp + "   -   " + aux_dias)
                                 changed = True
 
                             if dia1 == dia2 and int(hora1[-1::]) + 1 == int(hora2[-1::]):
