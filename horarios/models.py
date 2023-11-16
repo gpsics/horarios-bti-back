@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.db.models.constraints import CheckConstraint
 from django.db.models import Q
 from django.dispatch import receiver
@@ -109,9 +109,7 @@ class Turma(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        print(self.horario)
-
-        # self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
+        self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
         super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -156,4 +154,3 @@ def calcular_horas_alteracao(sender, instance, model, action, **kwargs):
         for profs in instance.professor.all():
             profs.horas_semanais += Decimal(horas)
             profs.save()
-

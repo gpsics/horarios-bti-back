@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 import re
 
+
 # Serializer de customização do token JWT
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -35,6 +36,12 @@ class TurmaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Turma
         fields = ['id', 'cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor']
+
+
+class TurmaSerializerSimplificado(serializers.ModelSerializer):
+    class Meta:
+        model = Turma
+        fields = ['id', 'cod_componente', 'num_turma']
 
 
 class TurmaSerializerFormatado(serializers.ModelSerializer):
@@ -95,5 +102,19 @@ class TurmaSerializerFormatado(serializers.ModelSerializer):
 class HorariosSerializer(serializers.ModelSerializer):
     class Meta:
         model = Turma
-        fields = ['cod_componente', 'num_turma', 'horario']
+        fields = ['id', 'cod_componente', 'num_turma', 'horario']
 
+
+class ConflitosSerializer(serializers.Serializer):
+    turma1 = TurmaSerializerSimplificado
+    turma2 = TurmaSerializerSimplificado
+    horario = serializers.CharField()
+    motivo = serializers.CharField()
+
+    def to_representation(self, instance):
+        return {
+            'turma1': TurmaSerializerSimplificado(instance[0]).data,
+            'turma2': TurmaSerializerSimplificado(instance[1]).data,
+            'horario': instance[2],
+            'motivo': instance[3],
+        }
