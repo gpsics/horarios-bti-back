@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.signals import post_save, post_delete, m2m_changed
+from django.db.models.signals import post_save, pre_delete, m2m_changed
 from django.db.models.constraints import CheckConstraint
 from django.db.models import Q
 from django.dispatch import receiver
@@ -143,14 +143,35 @@ def corrige_horas(sender, instance, created, **kwargs):
         instance.save()
 
 
+@receiver(pre_delete, sender=Turma)
+def delete_turma(sender, instance, **kwargs):
+    horas = (instance.cod_componente.carga_horaria / 15)
+
+    for profs in instance.professor.all():
+        profs.horas_semanais -= Decimal(horas)
+        profs.save()
+
+
 # Sinal que está monitorando o relacionamente ManyToMany de Turma e Professor
 @receiver(m2m_changed, sender=Turma.professor.through)
-def calcular_horas_alteracao(sender, instance, model, action, **kwargs):
-    # Monitoriamente de postagem, remoção e limpeza de elementos na tabela da relação
-    if action in ['post_add', 'post_remove', 'post_clear']:
-        horas = (instance.cod_componente.carga_horaria / 15)
+def ajuste_horas_professor(sender, instance, model, action, pk_set, **kwargs):
+    horas = (instance.cod_componente.carga_horaria / 15)
 
-        # Realiza a alteração das horas semanais de todos os professores presente na turma
-        for profs in instance.professor.all():
-            profs.horas_semanais += Decimal(horas)
+    if action == "pre_add":
+        for id_prof in pk_set:
+            profs = Professor.objects.get(pk=id_prof)
+
+            if (profs.horas_semanais + Decimal(horas)) > 20:
+                raise ValidationError(f'Quantidade de horas semanais máxima do professor "{profs}" atinginda.')
+            else:
+                profs.horas_semanais += Decimal(horas)
+                profs.save()
+
+    elif action == "post_remove":
+        for id_prof in pk_set:
+            profs = Professor.objects.get(pk=id_prof)
+
+            profs.horas_semanais -= Decimal(horas)
             profs.save()
+
+m2m_changed.connect(ajuste_horas_professor, sender=Turma.professor.through)

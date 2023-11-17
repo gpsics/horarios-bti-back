@@ -109,12 +109,12 @@ class ConflitosSerializer(serializers.Serializer):
     turma1 = TurmaSerializerSimplificado
     turma2 = TurmaSerializerSimplificado
     horario = serializers.CharField()
-    motivo = serializers.CharField()
+    conflito = serializers.CharField()
 
     def to_representation(self, instance):
         return {
             'turma1': TurmaSerializerSimplificado(instance[0]).data,
             'turma2': TurmaSerializerSimplificado(instance[1]).data,
             'horario': instance[2],
-            'motivo': instance[3],
+            'conflito': instance[3],
         }

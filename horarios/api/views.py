@@ -85,7 +85,7 @@ class ListaHorariosConflito(generics.ListAPIView):
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_sems.id) and (turma.cod_componente != aux_turma_sems.cod_componente) \
                                 and (aux_horario1 == aux_horario2):
-                            conflito = (turma, aux_turma_sems, aux_horario1, "Conflito - Semestre")
+                            conflito = (turma, aux_turma_sems, aux_horario1, "Por semestre")
                             conflitos.add(conflito)
 
             turmas_prof = Turma.objects.filter(professor__in=turma.professor.all()).exclude(id=turma.id)
@@ -97,7 +97,7 @@ class ListaHorariosConflito(generics.ListAPIView):
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_prof.id) and (turma.cod_componente != aux_turma_prof.cod_componente) \
                                 and (aux_horario1 == aux_horario2):
-                            conflito = (turma, aux_turma_prof, aux_horario1, "Conflito - Professor")
+                            conflito = (turma, aux_turma_prof, aux_horario1, "Por professor")
                             conflitos.add(conflito)
 
             turmas.pop(0)
