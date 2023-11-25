@@ -38,12 +38,14 @@ class TurmaSerializer(serializers.ModelSerializer):
         fields = ['id', 'cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor']
 
 
+# Serializer dos dados de uma Turma simplificado
 class TurmaSerializerSimplificado(serializers.ModelSerializer):
     class Meta:
         model = Turma
         fields = ['id', 'cod_componente', 'num_turma']
 
 
+# Serializer dos dados de uma Turma com o horário formatado
 class TurmaSerializerFormatado(serializers.ModelSerializer):
     horario = serializers.SerializerMethodField('get_horario')
 
@@ -105,12 +107,14 @@ class HorariosSerializer(serializers.ModelSerializer):
         fields = ['id', 'cod_componente', 'num_turma', 'horario']
 
 
+# Serializer dos dados de um Conflito de Turmas
 class ConflitosSerializer(serializers.Serializer):
     turma1 = TurmaSerializerSimplificado
     turma2 = TurmaSerializerSimplificado
     horario = serializers.CharField()
     conflito = serializers.CharField()
 
+    # Método responsável por serelializar o objeto
     def to_representation(self, instance):
         return {
             'turma1': TurmaSerializerSimplificado(instance[0]).data,

@@ -16,12 +16,12 @@ def validar_horario(horarios, carga_horaria):
 
     # Verifica se o horário está dentro do limite para a carga horária do componente
     if not len(vetor_horarios) <= carga_horaria / 15:
-        raise ValidationError('Horário inválido')
+        raise ValidationError(f'Horário "{horarios}" inválido')
 
     for index in range(len(vetor_horarios)):
         # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
         if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
-            raise ValidationError('Formato inválido do horário')
+            raise ValidationError(f'Formato inválido do horário "{vetor_horarios[index]}"')
 
         # Ordena de forma crescente as partes contendo número na expressão
         dias_ordenado = "".join(sorted(re.sub(r'[MmNnTt].*', '', vetor_horarios[index])))
@@ -29,7 +29,7 @@ def validar_horario(horarios, carga_horaria):
 
         # Verifica se nas partes contendo números, contém apenas números
         if re.search(r'[a-zA-Z]', dias_ordenado) or re.search(r'[a-zA-Z]', horas_ordenado):
-            raise ValidationError('Formato inválido do horário')
+            raise ValidationError(f'Formato inválido do horário "{vetor_horarios[index]}"')
 
         # Incrementa a quantidade de horas no horario no contador_h
         contador_h += len(dias_ordenado) * len(horas_ordenado)
@@ -41,7 +41,7 @@ def validar_horario(horarios, carga_horaria):
 
     # Verifica se a quantidade de horas presente no horário está correto
     if not contador_h == carga_horaria / 15:
-        raise ValidationError('Quantidade de horas inválida no horário.')
+        raise ValidationError(f'Quantidade de horas inválida no horário "{contador_h} - {carga_horaria}".')
 
     return " ".join(vetor_horarios)
 
@@ -49,7 +49,7 @@ def validar_horario(horarios, carga_horaria):
 # Função que verifica e validar se o valor da carga horária está correta
 def validar_carga_horaria(value):
     if not value > 0 or not value % 15 == 0:
-        raise ValidationError('Carga horária deve maior que 0 e divisível por 15.')
+        raise ValidationError(f'Carga horária ({value}) deve maior que 0 e divisível por 15.')
 
 
 # Modelo de Componente Curricular com seus devidos atributos
@@ -134,40 +134,46 @@ class Professor(models.Model):
         return self.nome_prof
 
 
-# Sinal que está monitorando a criação de objeto de Professor
+# Signal que monitora a criação de um objeto de Professor
 @receiver(post_save, sender=Professor)
 def corrige_horas(sender, instance, created, **kwargs):
-    # Sempre que um Professor é criado, independente dos seus valores, ele começa com horas_semanais em 0
+    # Sempre que um Professor é criado, o campo horas_semanais é atribuído o valor 0
     if created:
         instance.horas_semanais = 0
         instance.save()
 
 
+# Signal que monitora a exclusão de um objeto de Turma
 @receiver(pre_delete, sender=Turma)
 def delete_turma(sender, instance, **kwargs):
     horas = (instance.cod_componente.carga_horaria / 15)
 
+    # Sempre que uma Turma é deletada, os professores presente na Turma tem suas horas decrementadas
     for profs in instance.professor.all():
         profs.horas_semanais -= Decimal(horas)
         profs.save()
 
 
-# Sinal que está monitorando o relacionamente ManyToMany de Turma e Professor
+# Signal que monitora o relacionamente ManyToMany de Turma e Professor
 @receiver(m2m_changed, sender=Turma.professor.through)
 def ajuste_horas_professor(sender, instance, model, action, pk_set, **kwargs):
     horas = (instance.cod_componente.carga_horaria / 15)
 
+    # Sempre antes de uma instância do relacionando ser salva, os professores presente nela tem suas horas incrementada
     if action == "pre_add":
         for id_prof in pk_set:
             profs = Professor.objects.get(pk=id_prof)
 
+            # Caso o professor tenham atingido 20 horas semanais, a ação retorna um erro, senão incrementa as horas
             if (profs.horas_semanais + Decimal(horas)) > 20:
                 raise ValidationError(f'Quantidade de horas semanais máxima do professor "{profs}" atinginda.')
             else:
                 profs.horas_semanais += Decimal(horas)
                 profs.save()
 
+    # Sempre que um ou mais professores são removidos da relação com turma, os removidos tem suas horas decrementada
     elif action == "post_remove":
+        # Itera a cerca dos id dos professores removidos da relação
         for id_prof in pk_set:
             profs = Professor.objects.get(pk=id_prof)
 

@@ -67,38 +67,55 @@ class ListaHorariosProfessor(generics.ListAPIView):
 
 class ListaHorariosConflito(generics.ListAPIView):
     def get_queryset(self):
+        turms_ign = []
+        comps_ign = []
+
         conflitos = set()
         turmas = list(Turma.objects.all())
 
         for turma in turmas:
+            turms_ign.append(turma.id)
+            comps_ign.append(turma.cod_componente)
+
             componenete = ComponenteCurricular.objects.get(codigo=turma.cod_componente.codigo)
             componenetes_sems = ComponenteCurricular.objects.filter(num_semestre=componenete.num_semestre).\
                 values('codigo')
 
-            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(cod_componente=turma.cod_componente)
+            # Realiza a busca das turmas dos componentes que possui mesmo semestre do componente da turma
+            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(cod_componente__in=
+                                                                                             comps_ign)
             horarios1 = turma.horario.split()
 
             for aux_turma_sems in turmas_sems:
                 horarios2 = aux_turma_sems.horario.split()
+                horarios_conflit = set()
 
                 for aux_horario1 in horarios1:
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_sems.id) and (turma.cod_componente != aux_turma_sems.cod_componente) \
                                 and (aux_horario1 == aux_horario2):
-                            conflito = (turma, aux_turma_sems, aux_horario1, "Por semestre")
-                            conflitos.add(conflito)
+                            horarios_conflit.add(aux_horario1)
+                            horarios_conflit.add(aux_horario2)
 
-            turmas_prof = Turma.objects.filter(professor__in=turma.professor.all()).exclude(id=turma.id)
+                conflito = (turma, aux_turma_sems, " ".join(horarios_conflit), "Por semestre")
+                conflitos.add(conflito)
+
+            # Realiza a busca das turmas de todos os professores presente na turma
+            turmas_prof = Turma.objects.filter(professor__in=turma.professor.all()).exclude(id__in=turms_ign)
 
             for aux_turma_prof in turmas_prof:
                 horarios2 = aux_turma_prof.horario.split()
+                horarios_conflit = set()
 
                 for aux_horario1 in horarios1:
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_prof.id) and (turma.cod_componente != aux_turma_prof.cod_componente) \
                                 and (aux_horario1 == aux_horario2):
-                            conflito = (turma, aux_turma_prof, aux_horario1, "Por professor")
-                            conflitos.add(conflito)
+                            horarios_conflit.add(aux_horario1)
+                            horarios_conflit.add(aux_horario2)
+
+                conflito = (turma, aux_turma_prof, " ".join(horarios_conflit), "Por professor")
+                conflitos.add(conflito)
 
             turmas.pop(0)
 
