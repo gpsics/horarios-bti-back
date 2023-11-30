@@ -15,7 +15,7 @@ def validar_horario(horarios, carga_horaria):
     contador_h = 0
 
     # Verifica se o horário está dentro do limite para a carga horária do componente
-    if not len(vetor_horarios) <= carga_horaria / 15:
+    if not len(vetor_horarios) == carga_horaria / 15:
         raise ValidationError(f'Horário "{horarios}" inválido')
 
     for index in range(len(vetor_horarios)):
