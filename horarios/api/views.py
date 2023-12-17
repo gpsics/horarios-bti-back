@@ -67,29 +67,37 @@ class ListaHorariosProfessor(generics.ListAPIView):
 
 class ListaHorariosConflito(generics.ListAPIView):
     def get_queryset(self):
-        turms_ign = []
-        comps_ign = []
+        def test():
+            pass
+
+        turms_ign = []      # Irá armazenar os id das turmas que vão ser ignoradas na busca
+        comps_ign = []      # Irá armazenar os códigos dos componentes que vão ser ignoradas na busca
 
         conflitos = set()
         turmas = list(Turma.objects.all())
 
+        # Pecorre todas as turmas cadastradas
         for turma in turmas:
             turms_ign.append(turma.id)
             comps_ign.append(turma.cod_componente)
 
+            # Realiza a busca do semestre do componente da turma e de todos os componentes desse semestre
             componenete = ComponenteCurricular.objects.get(codigo=turma.cod_componente.codigo)
-            componenetes_sems = ComponenteCurricular.objects.filter(num_semestre=componenete.num_semestre).\
+            componenetes_sems = ComponenteCurricular.objects.filter(num_semestre=componenete.num_semestre). \
                 values('codigo')
 
             # Realiza a busca das turmas dos componentes que possui mesmo semestre do componente da turma
-            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(cod_componente__in=
-                                                                                             comps_ign)
+            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(cod_componente__in=comps_ign)
+
+            # Separa todos os horários da string
             horarios1 = turma.horario.split()
 
+            # Pecorre todas as turmas resultado da busca por semestre
             for aux_turma_sems in turmas_sems:
                 horarios2 = aux_turma_sems.horario.split()
                 horarios_conflit = set()
 
+                # Bloco de código faz a comparação de todos os horários
                 for aux_horario1 in horarios1:
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_sems.id) and (turma.cod_componente != aux_turma_sems.cod_componente) \
@@ -97,16 +105,20 @@ class ListaHorariosConflito(generics.ListAPIView):
                             horarios_conflit.add(aux_horario1)
                             horarios_conflit.add(aux_horario2)
 
-                conflito = (turma, aux_turma_sems, " ".join(horarios_conflit), "Por semestre")
-                conflitos.add(conflito)
+                # Verifica houve conflito entre os horários comparados
+                if len(horarios_conflit) != 0:
+                    conflito = (turma, aux_turma_sems, " ".join(horarios_conflit), "Por semestre")
+                    conflitos.add(conflito)
 
             # Realiza a busca das turmas de todos os professores presente na turma
             turmas_prof = Turma.objects.filter(professor__in=turma.professor.all()).exclude(id__in=turms_ign)
 
+            # Pecorre todas as turmas resultado da busca por professor
             for aux_turma_prof in turmas_prof:
                 horarios2 = aux_turma_prof.horario.split()
                 horarios_conflit = set()
 
+                # Bloco de código faz a comparação de todos os horários
                 for aux_horario1 in horarios1:
                     for aux_horario2 in horarios2:
                         if (turma.id != aux_turma_prof.id) and (turma.cod_componente != aux_turma_prof.cod_componente) \
@@ -114,13 +126,12 @@ class ListaHorariosConflito(generics.ListAPIView):
                             horarios_conflit.add(aux_horario1)
                             horarios_conflit.add(aux_horario2)
 
-                conflito = (turma, aux_turma_prof, " ".join(horarios_conflit), "Por professor")
-                conflitos.add(conflito)
-
-            turmas.pop(0)
+                # Verifica houve conflito entre os horários comparados
+                if len(horarios_conflit) != 0:
+                    conflito = (turma, aux_turma_prof, " ".join(horarios_conflit), "Por professor")
+                    conflitos.add(conflito)
 
         return conflitos
 
     serializer_class = ConflitosSerializer
     permission_classes = [IsAuthenticated]
-
