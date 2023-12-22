@@ -61,8 +61,7 @@ class ComponenteCurricular(models.Model):
     )
 
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
-    nome_comp = models.CharField(max_length=80, error_messages="O nome do componente deve ter no mínimo 1 caractere e "
-                                                               "no máximo 80.")
+    nome_comp = models.CharField(max_length=80)
     num_semestre = models.IntegerField(blank=True, default=0)
     carga_horaria = models.PositiveSmallIntegerField(validators=[validar_carga_horaria])
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
@@ -96,7 +95,7 @@ class Turma(models.Model):
     cod_componente = models.ForeignKey(ComponenteCurricular, related_name='turma_disciplina', on_delete=models.CASCADE)
     num_turma = models.PositiveSmallIntegerField()
     horario = models.CharField(max_length=80)
-    num_vagas = models.PositiveSmallIntegerField(default=0, error_messages="O número de vagas deve no mínimo 0.")
+    num_vagas = models.PositiveSmallIntegerField(default=0)
     professor = models.ManyToManyField("Professor", related_name='turma_professor', null=True, blank=True)
 
     class Meta:
