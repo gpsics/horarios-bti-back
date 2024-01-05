@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='componentecurricular',
             name='carga_horaria',
-            field=models.PositiveSmallIntegerField(validators=[horarios.models.validar_carga_horaria]),
+            field=models.PositiveSmallIntegerField(),
         ),
         migrations.AlterField(
             model_name='componentecurricular',

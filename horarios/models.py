@@ -1,55 +1,11 @@
 from django.db import models
 from django.db.models.signals import post_save, pre_delete, m2m_changed
 from django.db.models.constraints import CheckConstraint
-from django.db.models import Q
+from django.db.models import Q, F
 from django.dispatch import receiver
 from django.core.validators import MinLengthValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-import re
-
-
-# Função responsável por validar e verificar o formato/quantidade de horários
-def validar_horario(horarios, carga_horaria):
-    vetor_horarios = horarios.split()
-    contador_h = 0
-
-    # Verifica se o horário está dentro do limite para a carga horária do componente
-    if not len(vetor_horarios) == carga_horaria / 15:
-        raise ValidationError(f'Horário "{horarios}" inválido')
-
-    for index in range(len(vetor_horarios)):
-        # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
-        if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
-            raise ValidationError(f'Formato inválido do horário "{vetor_horarios[index]}"')
-
-        # Ordena de forma crescente as partes contendo número na expressão
-        dias_ordenado = "".join(sorted(re.sub(r'[MmNnTt].*', '', vetor_horarios[index])))
-        horas_ordenado = "".join(sorted(re.sub(r'^.*[MmNnTt]', '', vetor_horarios[index])))
-
-        # Verifica se nas partes contendo números, contém apenas números
-        if re.search(r'[a-zA-Z]', dias_ordenado) or re.search(r'[a-zA-Z]', horas_ordenado):
-            raise ValidationError(f'Formato inválido do horário "{vetor_horarios[index]}"')
-
-        # Incrementa a quantidade de horas no horario no contador_h
-        contador_h += len(dias_ordenado) * len(horas_ordenado)
-
-        turno = (re.search(r'[MmNnTt]', vetor_horarios[index])).group().upper()
-
-        # Após as informações serem ordenadas e verificadas, são postas na string novamente
-        vetor_horarios[index] = dias_ordenado + turno + horas_ordenado
-
-    # Verifica se a quantidade de horas presente no horário está correto
-    if not contador_h == carga_horaria / 15:
-        raise ValidationError(f'Quantidade de horas inválida no horário "{contador_h} - {carga_horaria}".')
-
-    return " ".join(vetor_horarios)
-
-
-# Função que verifica e validar se o valor da carga horária está correta
-def validar_carga_horaria(value):
-    if not value > 0 or not value % 15 == 0:
-        raise ValidationError(f'Carga horária ({value}) deve maior que 0 e divisível por 15.')
 
 
 # Modelo de Componente Curricular com seus devidos atributos
@@ -63,7 +19,7 @@ class ComponenteCurricular(models.Model):
     codigo = models.CharField(primary_key=True, max_length=7, validators=[MinLengthValidator(7)])
     nome_comp = models.CharField(max_length=80)
     num_semestre = models.IntegerField(blank=True, default=0)
-    carga_horaria = models.PositiveSmallIntegerField(validators=[validar_carga_horaria])
+    carga_horaria = models.PositiveSmallIntegerField()
     departamento = models.CharField(max_length=80, choices=DEPARTAMENTO)
     obrigatorio = models.BooleanField(default=False)
 
@@ -78,7 +34,7 @@ class ComponenteCurricular(models.Model):
             CheckConstraint(check=Q(num_semestre__lte="6"), name="semestre_menor_igual_6"),
             CheckConstraint(check=Q(carga_horaria__gte="0"), name="carga_horaria_maior_0"),
             CheckConstraint(check=~Q(obrigatorio=True, num_semestre="0"),
-                            name="semestre_diferente_zero_componente_obrigatorio")
+                            name="semestre_diferente_zero_componente_obrigatorio"),
         ]
 
     def save(self, *args, **kwargs):
@@ -108,7 +64,8 @@ class Turma(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        self.horario = validar_horario(self.horario, self.cod_componente.carga_horaria)
+        self.cod_componente = self.cod_componente.upper()
+        self.horario = self.horario.upper()
         super(Turma, self).save(*args, **kwargs)
 
     def __str__(self):
