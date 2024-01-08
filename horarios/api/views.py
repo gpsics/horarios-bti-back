@@ -17,42 +17,67 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def validate_codigo_componente(self, codigo):
+        if len(codigo) < 1:
+            return f"É necessário informar o código do componente."
+
         if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
             return f"Formato inválido do código ({codigo})."
 
+        try:
+            componente = self.queryset.get(pk=codigo)
+            if componente:
+                return f"Já existe um componente com esse código ({codigo})."
+        except ObjectDoesNotExist:
+            pass
+
     def validate_nome_componente(self, nome):
         if nome == "" or len(nome) > 80:
-            return f"O nome do componente ({nome}) deve ter no mínimo 1 caractere e no máximo 80."
+            return f"O nome do componente deve ter no mínimo 1 caractere e no máximo 80."
 
     def validate_semestre_componente(self, semestre, obrigatorio):
         if int(semestre) < 0:
-            return f"O número do semestre ({semestre}) deve ser maior que 0."
+            return f"O número do semestre ({semestre}) deve ser maior ou igual a 0."
 
-        if int(semestre) != 0 and not obrigatorio:
-            return f"O componente deve ser obrigatório quando número do semestre diferente de 0."
+        if int(semestre) > 6:
+            return f"O número do semestre ({semestre}) deve ser menor ou igual a 6."
+
+        if int(semestre) == 0 and obrigatorio:
+            return f"O componente quando obrigatório deve possuir um semestre diferente de 0."
 
     def validate_carga_componente(self, carga):
         if int(carga) < 0 or not int(carga) % 15 == 0:
             return f'Carga horária ({carga}) deve maior que 0 e divisível por 15.'
 
-    def validate_componente(self, componente):
+    def validate_componente(self, componente, request=""):
         validation_errors = {}
-        codigo = self.validate_codigo_componente(componente.get("codigo").upper())
-        nome_comp = self.validate_nome_componente(componente.get("nome_comp").upper())
-        semestre = self.validate_semestre_componente(componente.get("num_semestre"), componente.get("obrigatorio"))
-        carga = self.validate_carga_componente(componente.get("carga_horaria"))
 
-        if codigo:
-            validation_errors['codigo'] = codigo
+        if 'codigo' in componente:
+            codigo = self.validate_codigo_componente(componente.get("codigo").upper())
+            if codigo:
+                validation_errors['codigo'] = codigo
+        elif request != "PATCH":
+            validation_errors['codigo'] = f'Campo obrigatório.'
 
-        if nome_comp:
-            validation_errors['nome_comp'] = nome_comp
+        if 'nome_comp' in componente:
+            nome_comp = self.validate_nome_componente(componente.get("nome_comp").upper())
+            if nome_comp:
+                validation_errors['nome_comp'] = nome_comp
+        elif request != "PATCH":
+            validation_errors['nome_comp'] = f'Campo obrigatório.'
 
-        if semestre:
-            validation_errors['num_semestre'] = semestre
+        if 'num_semestre' in componente:
+            semestre = self.validate_semestre_componente(componente.get("num_semestre"), componente.get("obrigatorio"))
+            if semestre:
+                validation_errors['num_semestre'] = semestre
+        elif request != "PATCH":
+            validation_errors['num_semestre'] = f'Campo obrigatório.'
 
-        if carga:
-            validation_errors['carga_horaria'] = carga
+        if 'carga_horaria' in componente:
+            carga = self.validate_carga_componente(componente.get("carga_horaria"))
+            if carga:
+                validation_errors['carga_horaria'] = carga
+        elif request != "PATCH":
+            validation_errors['carga_horaria'] = f'Campo obrigatório.'
 
         return validation_errors
 
@@ -87,27 +112,46 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
         componente = self.get_object()
         data = request.data
 
-        validation_errors = self.validate_componente(data)
+        validation_errors = self.validate_componente(data, request.method)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
-        serializer = ProfessorSerializer(componente, data=data)
+        if 'codigo' not in data:
+            data['codigo'] = kwargs.get('pk')
+
+        serializer = ComponenteCurricularSerializer(componente, data=data)
         return self.perform_create_or_update(serializer)
 
 
-# View que está mostrando todos os objetos criados de Professor
+# View que está mostrando todos os objetos \criados de Professor
 class ProfessorViewSet(viewsets.ModelViewSet):
     queryset = Professor.objects.all()
     serializer_class = ProfessorSerializer
     permission_classes = [IsAuthenticated]
 
-    def validate_professor(self, nome):
+    def validate_nome_professor(self, nome):
+        if len(nome) < 1:
+            return f'É necessário informar o nome do professor.'
+
         if len(nome) > 80:
             return f'O nome do professor deve ter no máximo 80 caracteres.'
 
         professores = Professor.objects.filter(nome_prof=nome)
         if professores.exists():
-            return f'Já existe um professor com o nome de {nome}.'
+            return f'Já existe um professor com o nome {nome}.'
+
+    def validate_professor(self, professor, request=""):
+        validation_errors = {}
+
+        if 'nome_prof' in professor:
+            nome_prof = self.validate_nome_professor(professor.get("nome_prof").upper())
+
+            if nome_prof:
+                validation_errors['nome_prof'] = nome_prof
+        elif request != "PATCH":
+            validation_errors['nome_prof'] = f'Campo obrigatório.'
+
+        return validation_errors
 
     def perform_create_or_update(self, serializer):
         if serializer.is_valid():
@@ -129,7 +173,7 @@ class ProfessorViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data
 
-        validation_errors = self.validate_professor(data.get("nome_prof").upper())
+        validation_errors = self.validate_professor(data)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
@@ -140,9 +184,12 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         professor = self.get_object()
         data = request.data
 
-        validation_errors = self.validate_professor(data.get("nome_prof").upper())
+        validation_errors = self.validate_professor(data, request.method)
         if validation_errors:
             return Response(data=validation_errors, status=400)
+
+        if 'id' not in data:
+            data['id'] = kwargs.get('pk')
 
         serializer = ProfessorSerializer(professor, data=data)
         return self.perform_create_or_update(serializer)
@@ -168,7 +215,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
             return f"Não existe componente curricular com esse código ({codigo})."
 
     def validate_numero_turma(self, codigo, num_turma):
-        if num_turma < 0:
+        if int(num_turma) < 0:
             return f"O número da turma ({num_turma}) deve ser positivo."
 
         turma = Turma.objects.filter(cod_componente=codigo, num_turma=num_turma)
@@ -209,49 +256,63 @@ class TurmaViewSet(viewsets.ModelViewSet):
             return f'A quantidade de horas no horário está inválida ({contador_h} - {carga_horaria}).'
 
     def validate_vagas_turma(self, num_vagas):
-        if num_vagas < 0:
+        if int(num_vagas) < 0:
             return f"O número de vagas ({num_vagas}) deve ser positivo."
 
     def validate_professores_turma(self, codigo, professores):
-        componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
-
         for id_professor in professores:
             professor = Professor.objects.get(pk=id_professor)
+            componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
 
             if componente:
                 if (professor.horas_semanais + Decimal(componente.carga_horaria / 15)) > 20:
                     return f"Quantidade máxima de horas semanais do professor ({professor}) alcançada."
 
-    def validate_turma(self, turma):
+    def validate_turma(self, turma, request=""):
         validation_errors = {}
+        print(turma)
 
-        cod_componente = self.validate_codigo_turma(turma.get("cod_componente").upper())
-        num_turma = self.validate_numero_turma(turma.get("cod_componente"), turma.get("num_turma"))
-        vagas = self.validate_vagas_turma(turma.get("num_vagas"))
+        if 'cod_componente' in turma:
+            cod_componente = self.validate_codigo_turma(turma.get("cod_componente").upper())
+            if cod_componente:
+                validation_errors['cod_componente'] = cod_componente
+        elif request != "PATCH":
+            validation_errors['cod_componente'] = f'Campo obrigatório.'
 
-        componente = ComponenteCurricular.objects.filter(codigo=turma.get("cod_componente").upper()).first()
-        if componente:
-            horario = self.validate_horario_turma(turma.get("horario").upper(), componente.carga_horaria)
-            if horario:
-                validation_errors['horario'] = horario
+        if 'num_turma' in turma:
+            if 'cod_componente' in turma:
+                num_turma = self.validate_numero_turma(turma.get("cod_componente"), turma.get("num_turma"))
+                if num_turma:
+                    validation_errors['num_turma'] = num_turma
+        elif request != "PATCH":
+            validation_errors['num_turma'] = f'Campo obrigatório.'
 
-        try:
-            check_prof = turma.get("professor")
-            if check_prof:
-                professor = self.validate_professores_turma(check_prof)
-                if professor:
-                    validation_errors['professor'] = professor
-        except ObjectDoesNotExist:
-            pass
+        if 'horario' in turma:
+            componente = ComponenteCurricular.objects.filter(codigo=turma.get("cod_componente")).first()
+            if componente:
+                horario = self.validate_horario_turma(turma.get("horario").upper(), componente.carga_horaria)
+                if horario:
+                    validation_errors['horario'] = horario
+        elif request != "PATCH":
+            validation_errors['horario'] = f'Campo obrigatório.'
 
-        if cod_componente:
-            validation_errors['cod_componente'] = cod_componente
+        if 'num_vagas' in turma:
+            vagas = self.validate_vagas_turma(turma.get("num_vagas"))
+            if vagas:
+                validation_errors['num_vagas'] = vagas
+        elif request != "PATCH":
+            validation_errors['num_vagas'] = f'Campo obrigatório.'
 
-        if num_turma:
-            validation_errors['num_turma'] = num_turma
+        if 'professor' in turma:
+            try:
+                professores = turma.get("professor")
 
-        if vagas:
-            validation_errors['vagas'] = vagas
+                if professores:
+                    professor = self.validate_professores_turma(turma.get("cod_componente"), professores)
+                    if professor:
+                        validation_errors['professor'] = professor
+            except ObjectDoesNotExist:
+                pass
 
         return validation_errors
 
@@ -286,7 +347,10 @@ class TurmaViewSet(viewsets.ModelViewSet):
         turma = self.get_object()
         data = request.data
 
-        validation_errors = self.validate_turma(data)
+        if 'cod_componente' not in data:
+            data['cod_componente'] = self.queryset.get(pk=kwargs.get('pk')).cod_componente.codigo
+
+        validation_errors = self.validate_turma(data, request.method)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
@@ -329,8 +393,8 @@ class ListaHorariosProfessor(generics.ListAPIView):
 
 class ListaHorariosConflito(generics.ListAPIView):
     def get_queryset(self):
-        turms_ign = []      # Irá armazenar os id das turmas que vão ser ignoradas na busca
-        comps_ign = []      # Irá armazenar os códigos dos componentes que vão ser ignoradas na busca
+        turms_ign = []  # Irá armazenar os id das turmas que vão ser ignoradas na busca
+        comps_ign = []  # Irá armazenar os códigos dos componentes que vão ser ignoradas na busca
 
         conflitos = set()
         turmas = list(Turma.objects.all())
@@ -346,7 +410,8 @@ class ListaHorariosConflito(generics.ListAPIView):
                 values('codigo')
 
             # Realiza a busca das turmas dos componentes que possui mesmo semestre do componente da turma
-            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(cod_componente__in=comps_ign)
+            turmas_sems = Turma.objects.filter(cod_componente__in=componenetes_sems).exclude(
+                cod_componente__in=comps_ign)
 
             # Separa todos os horários da string
             horarios1 = turma.horario.split()

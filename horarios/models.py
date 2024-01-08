@@ -64,7 +64,6 @@ class Turma(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        self.cod_componente = self.cod_componente.upper()
         self.horario = self.horario.upper()
         super(Turma, self).save(*args, **kwargs)
 
