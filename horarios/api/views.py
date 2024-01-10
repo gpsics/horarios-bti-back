@@ -31,10 +31,23 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
             pass
 
     def validate_nome_componente(self, nome):
-        if nome == "" or len(nome) > 80:
-            return f"O nome do componente deve ter no mínimo 1 caractere e no máximo 80."
+        if len(nome) < 1:
+            return f'É necessário informar o nome do componente.'
+
+        if len(nome) > 80:
+            return f'O nome do componente deve ter no máximo 80 caracteres.'
+
+        padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
+        if not padrao.fullmatch(nome):
+            return f"O nome do componente deve conter apenas letras e espaços."
 
     def validate_semestre_componente(self, semestre, obrigatorio):
+        if not semestre:
+            return f'É necessário informar um semestre para o componente.'
+
+        if not str(semestre).isdigit():
+            return f"O campo de número de semestre deve conter apenas números inteiros."
+
         if int(semestre) < 0:
             return f"O número do semestre ({semestre}) deve ser maior ou igual a 0."
 
@@ -45,8 +58,18 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
             return f"O componente quando obrigatório deve possuir um semestre diferente de 0."
 
     def validate_carga_componente(self, carga):
+        if not carga:
+            return f'É necessário informar uma carga horária para o componente.'
+
+        if not str(carga).isdigit():
+            return f"O campo de carga horária deve conter apenas números inteiros."
+
         if int(carga) < 0 or not int(carga) % 15 == 0:
             return f'Carga horária ({carga}) deve maior que 0 e divisível por 15.'
+
+    def validate_departamento(self, departamento):
+        if departamento not in [dep[0] for dep in ComponenteCurricular.DEPARTAMENTO]:
+            return f'É necessário informar um departamento válido.'
 
     def validate_componente(self, componente, request=""):
         validation_errors = {}
@@ -78,6 +101,13 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
                 validation_errors['carga_horaria'] = carga
         elif request != "PATCH":
             validation_errors['carga_horaria'] = f'Campo obrigatório.'
+
+        if 'departamento' in componente:
+            departamento = self.validate_departamento(componente.get("departamento"))
+            if departamento:
+                validation_errors['departamento'] = departamento
+        elif request != "PATCH":
+            validation_errors['departamento'] = f'Campo obrigatório.'
 
         return validation_errors
 
@@ -136,6 +166,10 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         if len(nome) > 80:
             return f'O nome do professor deve ter no máximo 80 caracteres.'
 
+        padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
+        if not padrao.fullmatch(nome):
+            return f"O nome do professor deve conter apenas letras e espaços."
+
         professores = Professor.objects.filter(nome_prof=nome)
         if professores.exists():
             return f'Já existe um professor com o nome {nome}.'
@@ -171,18 +205,21 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
 
         validation_errors = self.validate_professor(data)
         if validation_errors:
             return Response(data=validation_errors, status=400)
+
+        if 'nome_prof' in data:
+            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof'])
 
         serializer = ProfessorSerializer(data=data)
         return self.perform_create_or_update(serializer)
 
     def update(self, request, *args, **kwargs):
         professor = self.get_object()
-        data = request.data
+        data = request.data.copy()
 
         validation_errors = self.validate_professor(data, request.method)
         if validation_errors:
@@ -190,6 +227,9 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 
         if 'id' not in data:
             data['id'] = kwargs.get('pk')
+
+        if 'nome_prof' in data:
+            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof'])
 
         serializer = ProfessorSerializer(professor, data=data)
         return self.perform_create_or_update(serializer)
@@ -215,6 +255,12 @@ class TurmaViewSet(viewsets.ModelViewSet):
             return f"Não existe componente curricular com esse código ({codigo})."
 
     def validate_numero_turma(self, codigo, num_turma):
+        if not num_turma:
+            return f'É necessário informar o número da turma.'
+
+        if not str(num_turma).isdigit():
+            return f"O campo de número da turma deve conter apenas números inteiros."
+
         if int(num_turma) < 0:
             return f"O número da turma ({num_turma}) deve ser positivo."
 
@@ -228,14 +274,14 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
         # Verifica se o horário está dentro do limite para a carga horária do componente
         if not len(vetor_horarios) == carga_horaria / 15:
-            return f'Horário ({horarios}) inválido para a turma.'
+            return f'O horário ({horarios}) não corresponde a carga horária da turma.'
 
         for index in range(len(vetor_horarios)):
             # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
             if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
                 return f'Formato inválido do horário ({vetor_horarios[index]}).'
 
-            # Ordena de forma crescente as partes contendo número na expressão
+            # Ordena de forma crescente as partes contendo número\\  na expressão
             dias_ordenado = "".join(sorted(re.sub(r'[MmNnTt].*', '', vetor_horarios[index])))
             horas_ordenado = "".join(sorted(re.sub(r'^.*[MmNnTt]', '', vetor_horarios[index])))
 
@@ -256,6 +302,9 @@ class TurmaViewSet(viewsets.ModelViewSet):
             return f'A quantidade de horas no horário está inválida ({contador_h} - {carga_horaria}).'
 
     def validate_vagas_turma(self, num_vagas):
+        if not str(num_vagas).isdigit():
+            return f"O campo de número de vagas deve conter apenas números inteiros."
+
         if int(num_vagas) < 0:
             return f"O número de vagas ({num_vagas}) deve ser positivo."
 
@@ -268,9 +317,15 @@ class TurmaViewSet(viewsets.ModelViewSet):
                 if (professor.horas_semanais + Decimal(componente.carga_horaria / 15)) > 20:
                     return f"Quantidade máxima de horas semanais do professor ({professor}) alcançada."
 
-    def validate_turma(self, turma, request=""):
+    def validate_turma(self, turma, id_turma=0, request=""):
         validation_errors = {}
-        print(turma)
+
+        aux_turma = None
+        is_equal_num_turma = False
+        if int(id_turma) != 0:
+            aux_turma = self.queryset.get(pk=id_turma)
+            if turma.get("num_turma") == aux_turma.num_turma:
+                is_equal_num_turma = True
 
         if 'cod_componente' in turma:
             cod_componente = self.validate_codigo_turma(turma.get("cod_componente").upper())
@@ -280,7 +335,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
             validation_errors['cod_componente'] = f'Campo obrigatório.'
 
         if 'num_turma' in turma:
-            if 'cod_componente' in turma:
+            if 'cod_componente' in turma and not is_equal_num_turma:
                 num_turma = self.validate_numero_turma(turma.get("cod_componente"), turma.get("num_turma"))
                 if num_turma:
                     validation_errors['num_turma'] = num_turma
@@ -300,8 +355,8 @@ class TurmaViewSet(viewsets.ModelViewSet):
             vagas = self.validate_vagas_turma(turma.get("num_vagas"))
             if vagas:
                 validation_errors['num_vagas'] = vagas
-        elif request != "PATCH":
-            validation_errors['num_vagas'] = f'Campo obrigatório.'
+        # elif request != "PATCH":
+            # validation_errors['num_vagas'] = f'Campo obrigatório.'
 
         if 'professor' in turma:
             try:
@@ -334,7 +389,11 @@ class TurmaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
+
+        if 'num_vagas' in data:
+            if not data.get("num_vagas"):
+                data['num_vagas'] = 0
 
         validation_errors = self.validate_turma(data)
         if validation_errors:
@@ -345,12 +404,16 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         turma = self.get_object()
-        data = request.data
+        data = request.data.copy()
 
         if 'cod_componente' not in data:
             data['cod_componente'] = self.queryset.get(pk=kwargs.get('pk')).cod_componente.codigo
 
-        validation_errors = self.validate_turma(data, request.method)
+        if 'num_vagas' in data:
+            if not data.get("num_vagas"):
+                data['num_vagas'] = 0
+
+        validation_errors = self.validate_turma(data, kwargs.get('pk'), request.method)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
