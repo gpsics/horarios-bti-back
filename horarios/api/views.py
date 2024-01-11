@@ -42,9 +42,6 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
             return f"O nome do componente deve conter apenas letras e espaços."
 
     def validate_semestre_componente(self, semestre, obrigatorio):
-        if not semestre:
-            return f'É necessário informar um semestre para o componente.'
-
         if not str(semestre).isdigit():
             return f"O campo de número de semestre deve conter apenas números inteiros."
 
@@ -129,7 +126,10 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        data = request.data
+        data = request.data.copy()
+
+        if 'num_semestre' not in 'data':
+            data['num_semestre'] = 0
 
         validation_errors = self.validate_componente(data)
         if validation_errors:
@@ -207,12 +207,12 @@ class ProfessorViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
 
+        if 'nome_prof' in data:
+            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof']).upper().strip()
+
         validation_errors = self.validate_professor(data)
         if validation_errors:
             return Response(data=validation_errors, status=400)
-
-        if 'nome_prof' in data:
-            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof'])
 
         serializer = ProfessorSerializer(data=data)
         return self.perform_create_or_update(serializer)
@@ -221,15 +221,15 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         professor = self.get_object()
         data = request.data.copy()
 
+        if 'nome_prof' in data:
+            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof']).upper().strip()
+
         validation_errors = self.validate_professor(data, request.method)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
         if 'id' not in data:
             data['id'] = kwargs.get('pk')
-
-        if 'nome_prof' in data:
-            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof'])
 
         serializer = ProfessorSerializer(professor, data=data)
         return self.perform_create_or_update(serializer)
