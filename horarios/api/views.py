@@ -3,7 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.exceptions import ObjectDoesNotExist
 from decimal import Decimal
-from django.db.models import Prefetch
+from rest_framework import status
+from django.http import Http404
 import re
 
 from horarios.models import ComponenteCurricular, Professor, Turma
@@ -214,84 +215,69 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
 
 # View que está mostrando todos os objetos \criados de Professor
 class ProfessorViewSet(viewsets.ModelViewSet):
-    queryset = Professor.objects.all()
+    queryset = Professor.objects.all().order_by('nome_prof')
     serializer_class = ProfessorSerializer
     permission_classes = [IsAuthenticated]
-
-    def validate_nome_professor(self, nome):
-        if len(nome) < 1:
-            return f'É necessário informar o nome do professor.'
-
-        if len(nome) > 80:
-            return f'O nome do professor deve ter no máximo 80 caracteres.'
-
-        padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
-        if not padrao.fullmatch(nome):
-            return f"O nome do professor deve conter apenas letras e espaços."
-
-        professores = Professor.objects.filter(nome_prof=nome)
-        if professores.exists():
-            return f'Já existe um professor com o nome {nome}.'
-
-    def validate_professor(self, professor, request=""):
-        validation_errors = {}
-
-        if 'nome_prof' in professor:
-            nome_prof = self.validate_nome_professor(professor.get("nome_prof").upper())
-
-            if nome_prof:
-                validation_errors['nome_prof'] = nome_prof
-        elif request != "PATCH":
-            validation_errors['nome_prof'] = f'Campo obrigatório.'
-
-        return validation_errors
-
-    def perform_create_or_update(self, serializer):
-        if serializer.is_valid():
-            serializer.save()
-            return Response(data=serializer.data, status=201)
-        else:
-            return Response(data=serializer.errors, status=400)
 
     def retrieve(self, request, *args, **kwargs):
         try:
             professor = self.queryset.get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
-            errors = {f'Professor não encontrado!'}
-            return Response(data=errors, status=400)
+            return Response({"detail": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(professor)
         return Response(serializer.data)
 
+    def list(self, request, *args, **kwargs):
+        if not self.queryset:
+            return Response({"detail": "Nenhum professor(a) foi encontrado."}, status=status.HTTP_200_OK)
+
+        serializer = ProfessorSerializer(self.queryset, many=True)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        serializer = ProfessorSerializer(data=request.data)
 
-        if 'nome_prof' in data:
-            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof']).upper().strip()
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        validation_errors = self.validate_professor(data)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
-
-        serializer = ProfessorSerializer(data=data)
-        return self.perform_create_or_update(serializer)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
-        professor = self.get_object()
-        data = request.data.copy()
+        try:
+            professor = self.get_object()
+            serializer = ProfessorSerializer(professor, data=request.data)
 
-        if 'nome_prof' in data:
-            data['nome_prof'] = re.sub(r'\s+', ' ', data['nome_prof']).upper().strip()
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-        validation_errors = self.validate_professor(data, request.method)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
-        if 'id' not in data:
-            data['id'] = kwargs.get('pk')
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            professor = self.get_object()
+            serializer = ProfessorSerializer(professor, data=request.data, partial=True)
 
-        serializer = ProfessorSerializer(professor, data=data)
-        return self.perform_create_or_update(serializer)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            professor = self.queryset.get(pk=kwargs.get('pk'))
+            professor.delete()
+        except ObjectDoesNotExist:
+            return Response({"detail": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"detail": "Professor(a) excluído com sucesso."}, status=status.HTTP_204_NO_CONTENT)
 
 
 # View que está mostrando todos os objetos criados de Turma

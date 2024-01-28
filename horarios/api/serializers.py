@@ -26,9 +26,34 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
 
 # Serializer dos dados de um Professor
 class ProfessorSerializer(serializers.ModelSerializer):
+    nome_prof = serializers.CharField(
+        required=True,
+        allow_blank=True,
+        error_messages={'nome_prof': 'É necessário informar o nome do professor(a).'}
+    )
+
     class Meta:
         model = Professor
         fields = ['id', 'nome_prof', 'horas_semanais']  # 'url'
+
+    def validate_nome_prof(self, nome):
+        if not nome:
+            raise serializers.ValidationError("O nome do professor deve ser informado.")
+
+        nome = re.sub(r'\s+', ' ', nome).upper().strip()
+
+        if len(nome) > 80:
+            raise serializers.ValidationError("O nome do professor deve ter no máximo 80 caracteres.")
+
+        padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
+        if not padrao.fullmatch(nome):
+            raise serializers.ValidationError("O nome do professor deve conter apenas letras e espaços.")
+
+        professores = Professor.objects.filter(nome_prof=nome)
+        if professores.exists():
+            raise serializers.ValidationError("Já existe um professor com o nome {nome}.")
+
+        return nome
 
 
 # Serializer dos dados de uma Turma
