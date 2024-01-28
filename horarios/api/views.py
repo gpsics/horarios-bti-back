@@ -14,203 +14,69 @@ from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, Tu
 
 # View que está mostrando todos os objetos criados de Componente Curricular
 class ComponenteCurricularViewSet(viewsets.ModelViewSet):
-    queryset = ComponenteCurricular.objects.all()
+    queryset = ComponenteCurricular.objects.all().order_by('num_semestre')
     serializer_class = ComponenteCurricularSerializer
     permission_classes = [IsAuthenticated]
 
-    # Função para validar o código de um componente curricular
-    def validate_codigo_componente(self, codigo):
-        # Verifica se o código não está vázio
-        if len(codigo) < 1:
-            return f"É necessário informar o código do componente."
-
-        # Verifica se o código possui o tamanho correto
-        if len(codigo) != 7:
-            return f"O código do componente deve ter 7 caracteres alfanuméricos."
-
-        # Verifica se o código está no formato correto com uso de regex (Ex. LLL0000)
-        if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
-            return f"Formato inválido do código ({codigo})."
-
-        # Verifica se o código passado corresponde a um componente já existente
-        try:
-            componente = self.queryset.get(pk=codigo)
-            if componente:
-                return f"Já existe um componente com esse código ({codigo})."
-        except ObjectDoesNotExist:
-            pass
-
-    # Função para validar o nome de um componente curricular
-    def validate_nome_componente(self, nome):
-        # Verifica se o campo nome do componente é uma String
-        if not isinstance(nome, str):
-            return f"O campo de nome do componente deve ser uma String."
-
-        # Verifica se o nome do componente contém pelo menos um caractere
-        if len(nome) < 1:
-            return f'É necessário informar o nome do componente.'
-
-        # Verifica se o nome do componente contém pelo menos um caractere
-        if len(nome) > 80:
-            return f'O nome do componente deve ter no máximo 80 caracteres.'
-
-        # Verifica se o nome do componente contém apenas letras e espaços, nada de caracteres especiais
-        padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
-        if not padrao.fullmatch(nome):
-            return f"O nome do componente deve conter apenas letras e espaços."
-
-    # Função para validar o número do semestre de um componente curricular
-    def validate_semestre_componente(self, semestre, obrigatorio):
-        try:
-            semestre = int(semestre)
-        except ValueError:
-            return f"O campo de número de semestre deve ser um número inteiro."
-
-        # Verifica se o semestre é realmente um número inteiro
-        # if not isinstance(semestre, int):
-            # return f"O campo de número de semestre deve ser um número inteiro."
-
-        # Verifica se o semestre é um número menor que 0
-        if int(semestre) < 0:
-            return f"O número do semestre ({semestre}) deve ser maior ou igual a 0."
-
-        # Verifica se o semestre é um número maior que 6
-        if int(semestre) > 6:
-            return f"O número do semestre ({semestre}) deve ser menor ou igual a 6."
-
-        # Verifica se o campo obrigatório é do tipo Boolean
-        if not isinstance(obrigatorio, bool):
-            return f"O campo obrigatório deve ter um valor booleano (True ou False)."
-
-        # Verifica se o componente é obrigatório com semestre igual a 0
-        if int(semestre) == 0 and obrigatorio:
-            return f"O componente quando obrigatório deve possuir um semestre diferente de 0."
-
-    # Função para validar a carga horária de um componente curricular
-    def validate_carga_componente(self, carga):
-        # Verifica se a carga horária do componente foi informada
-        if not carga:
-            return f'É necessário informar uma carga horária para o componente.'
-
-        try:
-            carga = int(carga)
-        except ValueError:
-            return f"O campo da carga horário deve ser um número inteiro."
-
-        # Verifica se a carga horário do componente é realmente um número inteiro
-        # if not isinstance(carga, int):
-            # return f"O campo da carga horário deve ser um número inteiro."
-
-        # Verifica se a carga horária do componente é divisível por 15 e maior que 0
-        if int(carga) < 0 or not int(carga) % 15 == 0:
-            return f'Carga horária ({carga}) deve maior que 0 e divisível por 15.'
-
-    # Função para validar o departamento de um componente curricular
-    def validate_departamento(self, departamento):
-        # Verifica se o departamento do componente está dentro das possibilidades
-        if departamento not in [dep[0] for dep in ComponenteCurricular.DEPARTAMENTO]:
-            return f'É necessário informar um departamento válido.'
-
-    # Função para validar um componente curricular
-    def validate_componente(self, componente, request=""):
-        validation_errors = {}
-
-        # Verifica se o campo codigo está dentro do corpo da requisição, se sim, chama a sua função de validação
-        if 'codigo' in componente:
-            codigo = self.validate_codigo_componente(componente.get("codigo").upper())
-            if codigo:
-                validation_errors['codigo'] = codigo
-        # Senão, informa que o campo é obrigatório caso a requisição não seja PATCH
-        elif request != "PATCH":
-            validation_errors['codigo'] = f'Campo obrigatório.'
-
-        # Verifica se o campo nome_comp está dentro do corpo da requisição, se sim, chama a sua função de validação
-        if 'nome_comp' in componente:
-            nome_comp = self.validate_nome_componente(componente.get("nome_comp").upper())
-            if nome_comp:
-                validation_errors['nome_comp'] = nome_comp
-        # Senão, informa que o campo é obrigatório caso a requisição não seja PATCH
-        elif request != "PATCH":
-            validation_errors['nome_comp'] = f'Campo obrigatório.'
-
-        # Verifica se o campo num_semestre está dentro do corpo da requisição, se sim, chama a sua função de validação
-        if 'num_semestre' in componente:
-            semestre = self.validate_semestre_componente(componente.get("num_semestre"), componente.get("obrigatorio"))
-            if semestre:
-                validation_errors['num_semestre'] = semestre
-        # Senão, informa que o campo é obrigatório caso a requisição não seja PATCH
-        elif request != "PATCH":
-            validation_errors['num_semestre'] = f'Campo obrigatório.'
-
-        # Verifica se o campo carga_horario está dentro do corpo da requisição, se sim, chama a sua função de validação
-        if 'carga_horaria' in componente:
-            carga = self.validate_carga_componente(componente.get("carga_horaria"))
-            if carga:
-                validation_errors['carga_horaria'] = carga
-        # Senão, informa que o campo é obrigatório caso a requisição não seja PATCH
-        elif request != "PATCH":
-            validation_errors['carga_horaria'] = f'Campo obrigatório.'
-
-        # Verifica se o campo departamento está dentro do corpo da requisição, se sim, chama a sua função de validação
-        if 'departamento' in componente:
-            departamento = self.validate_departamento(componente.get("departamento"))
-            if departamento:
-                validation_errors['departamento'] = departamento
-        # Senão, informa que o campo é obrigatório caso a requisição não seja PATCH
-        elif request != "PATCH":
-            validation_errors['departamento'] = f'Campo obrigatório.'
-
-        return validation_errors
-
-    def perform_create_or_update(self, serializer):
-        if serializer.is_valid():
-            serializer.save()
-            return Response(data=serializer.data, status=201)
-        else:
-            return Response(data=serializer.errors, status=400)
-
-    # Função responsável por tratar solicitações GET de um objeto específico.
     def retrieve(self, request, *args, **kwargs):
         try:
             componente = self.queryset.get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
-            errors = {f'Componente Curricular não encontrado!'}
-            return Response(data=errors, status=400)
+            return Response({"detail": "Componente Curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(componente)
         return Response(serializer.data)
 
-    # Função responsável por tratar solicitações POST para criação de um novo objeto de componente curricular.
+    def list(self, request, *args, **kwargs):
+        if not self.queryset:
+            return Response({"detail": "Nenhum componente curricular encontrado."}, status=status.HTTP_200_OK)
+
+        serializer = ComponenteCurricularSerializer(self.queryset, many=True)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        serializer = ComponenteCurricularSerializer(data=request.data)
 
-        if 'num_semestre' not in data:
-            data['num_semestre'] = 0
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        if 'obrigatorio' not in data:
-            data['obrigatorio'] = False
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        validation_errors = self.validate_componente(data)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
-
-        serializer = ComponenteCurricularSerializer(data=data)
-        return self.perform_create_or_update(serializer)
-
-    # Função responsável por tratar solicitações PUT para atualizar completamente um componente curricular.
     def update(self, request, *args, **kwargs):
-        componente = self.get_object()
-        data = request.data
+        try:
+            componente = self.get_object()
+            serializer = ComponenteCurricularSerializer(componente, data=request.data)
 
-        validation_errors = self.validate_componente(data, request.method)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if 'codigo' not in data:
-            data['codigo'] = kwargs.get('pk')
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Componente curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = ComponenteCurricularSerializer(componente, data=data)
-        return self.perform_create_or_update(serializer)
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            componente = self.get_object()
+            serializer = ComponenteCurricularSerializer(componente, data=request.data, partial=True)
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Componente curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            componente = self.queryset.get(pk=kwargs.get('pk'))
+            componente.delete()
+        except ObjectDoesNotExist:
+            return Response({"detail": "Componente curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"detail": "Componente curricular excluído com sucesso."}, status=status.HTTP_204_NO_CONTENT)
 
 
 # View que está mostrando todos os objetos \criados de Professor
