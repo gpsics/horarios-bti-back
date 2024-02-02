@@ -1,9 +1,9 @@
-from rest_framework import viewsets, generics
+from rest_framework import viewsets, generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from django.core.exceptions import ObjectDoesNotExist
 from decimal import Decimal
-from rest_framework import status
 from django.http import Http404
 import re
 
@@ -14,7 +14,7 @@ from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, Tu
 
 # View que está mostrando todos os objetos criados de Componente Curricular
 class ComponenteCurricularViewSet(viewsets.ModelViewSet):
-    queryset = ComponenteCurricular.objects.all().order_by('num_semestre')
+    queryset = ComponenteCurricular.objects.all().order_by('nome_comp')
     serializer_class = ComponenteCurricularSerializer
     permission_classes = [IsAuthenticated]
 
@@ -150,12 +150,6 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 class TurmaViewSet(viewsets.ModelViewSet):
     queryset = Turma.objects.all()
     permission_classes = [IsAuthenticated]
-
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return TurmaSerializerFormatado
-
-        return TurmaSerializer
 
     def split_horarios(self, horario):
         vetor_horarios = set(horario.split())
@@ -294,8 +288,6 @@ class TurmaViewSet(viewsets.ModelViewSet):
             vagas = self.validate_vagas_turma(turma.get("num_vagas"))
             if vagas:
                 validation_errors['num_vagas'] = vagas
-        # elif request != "PATCH":
-            # validation_errors['num_vagas'] = f'Campo obrigatório.'
 
         if 'professor' in turma:
             try:
@@ -314,21 +306,20 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
         return validation_errors
 
-    def perform_create_or_update(self, serializer):
-        if serializer.is_valid():
-            serializer.save()
-            return Response(data=serializer.data, status=201)
-        else:
-            return Response(data=serializer.errors, status=400)
-
     def retrieve(self, request, *args, **kwargs):
         try:
             turma = self.queryset.get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
-            errors = {"Turma não encontrado!"}
-            return Response(data=errors, status=400)
+            return Response({"detail": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = self.get_serializer(turma)
+        serializer = TurmaSerializerFormatado(turma)
+        return Response(serializer.data)
+
+    def list(self, request, *args, **kwargs):
+        if not self.queryset:
+            return Response({"detail": "Nenhuma turma encontrada."}, status=status.HTTP_200_OK)
+
+        serializer = TurmaSerializerFormatado(self.queryset, many=True)
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
@@ -337,70 +328,108 @@ class TurmaViewSet(viewsets.ModelViewSet):
         if 'horario' in data:
             data['horario'] = self.split_horarios(data.get("horario"))
 
-        if 'num_vagas' in data:
-            if not data.get("num_vagas"):
-                data['num_vagas'] = 0
-
         validation_errors = self.validate_turma(data)
         if validation_errors:
             return Response(data=validation_errors, status=400)
 
         serializer = TurmaSerializer(data=data)
-        return self.perform_create_or_update(serializer)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data=serializer.data, status=201)
+        else:
+            return Response(data=serializer.errors, status=400)
 
     def update(self, request, *args, **kwargs):
-        turma = self.get_object()
-        data = request.data.copy()
+        try:
+            turma = self.get_object()
+            data = request.data.copy()
 
-        if 'horario' in data:
-            data['horario'] = self.split_horarios(data.get("horario"))
+            if 'horario' in data:
+                data['horario'] = self.split_horarios(data.get("horario"))
 
-        if 'cod_componente' not in data:
-            data['cod_componente'] = turma.cod_componente.codigo
+            validation_errors = self.validate_turma(data, kwargs.get('pk'))
+            if validation_errors:
+                return Response(data=validation_errors, status=status.HTTP_400_BAD_REQUEST)
 
-        validation_errors = self.validate_turma(data, kwargs.get('pk'), request.method)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
+            serializer = TurmaSerializer(turma, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        serializer = TurmaSerializer(turma, data=data)
-        return self.perform_create_or_update(serializer)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            turma = self.get_object()
+            data = request.data.copy()
+
+            if 'horario' in data:
+                data['horario'] = self.split_horarios(data.get("horario"))
+
+            validation_errors = self.validate_turma(data, kwargs.get('pk'))
+            if validation_errors:
+                return Response(data=validation_errors, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = TurmaSerializer(turma, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            return Response({"error": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            turma = self.queryset.get(pk=kwargs.get('pk'))
+            turma.delete()
+        except ObjectDoesNotExist:
+            return Response({"detail": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"detail": "Turma excluída com sucesso."}, status=status.HTTP_204_NO_CONTENT)
 
 
 # APIView que mostra todos os horários de Turmas com mesmo componentes
-class ListaHorariosComponente(generics.ListAPIView):
-    def get_queryset(self):  # Realiza a busca dos componentes e retorna as turmas desses componentes
-        query_set_turmas = Turma.objects.filter(cod_componente=self.kwargs['cod'])
-        return query_set_turmas
-
+class HorariosViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = HorariosSerializer
     permission_classes = [IsAuthenticated]
 
+    @action(methods=['get'], detail=True, url_path='componente', permission_classes=[IsAuthenticated])
+    def horarios_comp(self, request, cod=None):
+        horarios = Turma.objects.filter(cod_componente=cod)
 
-# APIView que mostra todos os horários de Turmas com componente de mesmo semestre
-class ListaHorariosSemestre(generics.ListAPIView):
-    def get_queryset(self):  # Realiza a busca dos componentes por semestre e retorna as turmas desses componentes
-        query_set_componenetes = ComponenteCurricular.objects.filter(num_semestre=self.kwargs['semestre']).values(
-            'codigo')
-        query_set_turmas = Turma.objects.filter(cod_componente__in=query_set_componenetes)
+        if horarios:
+            serializer = HorariosSerializer(horarios, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-        return query_set_turmas
+        return Response({"detail": "Nenhuma turma encontrada com esse código."}, status=status.HTTP_200_OK)
 
-    serializer_class = HorariosSerializer
-    permission_classes = [IsAuthenticated]
+    @action(methods=['get'], detail=True, url_path='professor', permission_classes=[IsAuthenticated])
+    def horarios_prof(self, request, id_prof=None):
+        horarios = Turma.objects.filter(professor=id_prof)
 
+        if horarios:
+            serializer = HorariosSerializer(horarios, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-# APIView que mostra todos os horários de Turmas de mesmo professor
-class ListaHorariosProfessor(generics.ListAPIView):
-    def get_queryset(self):  # Realiza a busca do professor e retorna as turmas desses professor
-        query_set_turmas = Turma.objects.filter(professor=self.kwargs['pk'])
-        return query_set_turmas
+        return Response({"detail": "Nenhuma turma encontrada com esse professor."}, status=status.HTTP_200_OK)
 
-    serializer_class = HorariosSerializer
-    permission_classes = [IsAuthenticated]
+    @action(methods=['get'], detail=True, url_path='semestre', permission_classes=[IsAuthenticated])
+    def horarios_semestre(self, request, semestre=None):
+        componenetes = ComponenteCurricular.objects.filter(num_semestre=semestre).values('codigo')
+        horarios = Turma.objects.filter(cod_componente__in=componenetes)
 
+        if horarios:
+            serializer = HorariosSerializer(horarios, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-class ListaHorariosConflito(generics.ListAPIView):
-    def get_queryset(self):
+        return Response({"detail": "Nenhuma turma encontrada com esse número de semestre."}, status=status.HTTP_200_OK)
+
+    @action(methods=['get'], detail=False, url_path='conflitos', permission_classes=[IsAuthenticated])
+    def horarios_conflitos(self, request):
         turms_ign = []  # Irá armazenar os id das turmas que vão ser ignoradas na busca
         comps_ign = []  # Irá armazenar os códigos dos componentes que vão ser ignoradas na busca
 
@@ -463,7 +492,9 @@ class ListaHorariosConflito(generics.ListAPIView):
                     conflito = (turma, aux_turma_prof, " ".join(horarios_conflit), "Por professor")
                     conflitos.add(conflito)
 
-        return conflitos
+        if conflitos:
+            serializer = ConflitosSerializer(conflitos, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-    serializer_class = ConflitosSerializer
-    permission_classes = [IsAuthenticated]
+        return Response({"detail": "Nenhum conflito de horário encontrado entre as turmas."}, status=status.HTTP_200_OK)
+

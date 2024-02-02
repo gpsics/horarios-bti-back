@@ -49,7 +49,10 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
     departamento = serializers.ChoiceField(
         required=True,
         choices=ComponenteCurricular.DEPARTAMENTO,
-        error_messages={'departamento': 'É necessário informar o departamento do componente curricular.'})
+        error_messages={
+            'required': 'É necessário informar o departamento do componente curricular',
+            'invalid_choice': 'É necessário escolher uma opção válida para o departamento.'
+        })
 
     class Meta:
         model = ComponenteCurricular
@@ -142,14 +145,6 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
 
         return carga
 
-    # Função para validar o departamento de um componente curricular
-    def validate_departamento(self, departamento):
-        # Verifica se o departamento do componente está dentro das possibilidades
-        if departamento not in [dep[0] for dep in ComponenteCurricular.DEPARTAMENTO]:
-            return f'É necessário informar um departamento válido.'
-
-        return departamento
-
 
 # Serializer dos dados de um Professor
 class ProfessorSerializer(serializers.ModelSerializer):
@@ -185,16 +180,11 @@ class ProfessorSerializer(serializers.ModelSerializer):
 
 # Serializer dos dados de uma Turma
 class TurmaSerializer(serializers.ModelSerializer):
+    num_vagas = serializers.IntegerField(required=False, default=0)
+
     class Meta:
         model = Turma
         fields = ['id', 'cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor']
-
-
-# Serializer dos dados de uma Turma simplificado
-class TurmaSerializerSimplificado(serializers.ModelSerializer):
-    class Meta:
-        model = Turma
-        fields = ['id', 'cod_componente', 'num_turma']
 
 
 # Serializer dos dados de uma Turma com o horário formatado
@@ -281,16 +271,16 @@ class HorariosSerializer(serializers.ModelSerializer):
 
 # Serializer dos dados de um Conflito de Turmas
 class ConflitosSerializer(serializers.Serializer):
-    turma1 = TurmaSerializerSimplificado
-    turma2 = TurmaSerializerSimplificado
+    turma1 = HorariosSerializer
+    turma2 = HorariosSerializer
     horario = serializers.CharField()
     conflito = serializers.CharField()
 
     # Método responsável por serelializar o objeto
     def to_representation(self, instance):
         return {
-            'turma1': TurmaSerializerSimplificado(instance[0]).data,
-            'turma2': TurmaSerializerSimplificado(instance[1]).data,
+            'turma1': HorariosSerializer(instance[0]).data,
+            'turma2': HorariosSerializer(instance[1]).data,
             'horario': instance[2],
             'conflito': instance[3],
         }

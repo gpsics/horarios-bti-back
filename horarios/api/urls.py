@@ -1,7 +1,6 @@
 from django.urls import include, path
 from rest_framework import routers
-from horarios.api.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaHorariosComponente, \
-    ListaHorariosProfessor, ListaHorariosSemestre, ListaHorariosConflito
+from horarios.api.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, HorariosViewSet
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -16,11 +15,10 @@ router.register(r'turmas', TurmaViewSet)
 urlpatterns = [
     path('', include(router.urls)),
 
-    path('horarios/professores/<int:pk>/', ListaHorariosProfessor.as_view()),
-    path('horarios/componentes/<cod>/', ListaHorariosComponente.as_view()),
-    path('horarios/semestre/<semestre>/', ListaHorariosSemestre.as_view()),
-
-    path('horarios/conflitos/', ListaHorariosConflito.as_view()),
+    path('horarios/professores/<int:id_prof>/', HorariosViewSet.as_view({'get': 'horarios_prof'}), name='horarios_prof'),
+    path('horarios/componentes/<cod>/', HorariosViewSet.as_view({'get': 'horarios_comp'}), name='horarios_comp'),
+    path('horarios/semestre/<semestre>/', HorariosViewSet.as_view({'get': 'horarios_semestre'}), name='horarios_semestre'),
+    path('horarios/conflitos/', HorariosViewSet.as_view({'get': 'horarios_conflitos'}), name='horarios_conflitos'),
 
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
