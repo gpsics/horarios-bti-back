@@ -10,24 +10,32 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from datetime import timedelta
 from pathlib import Path
+from decouple import Config, RepositoryEnv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+parent_directory = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+relative_dotenv_file = os.path.join(parent_directory, 'dotenv_files', '.env')
+config = Config(RepositoryEnv(relative_dotenv_file))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!es%yeo_desk90y+p@(=1vjm+xod!^yzz6%xqpxow844^p2^ap'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = []
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://main.d364oj6gtc2n8o.amplifyapp.com"
+]
 
 # Application definition
 
@@ -38,16 +46,28 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
+    # apps
     'horarios',
+    # libs
+    'rest_framework',
+    'corsheaders',
+    'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
-    "corsheaders",
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Gerenciador de Horarios',
+    'DESCRIPTION': 'API para agilizar no gerenciamento dos horários do curso de BTI da Ufersa',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 SIMPLE_JWT = {
@@ -131,6 +151,17 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+#      'default': {
+#          'ENGINE': config('DB_ENGINE', default='CHANGE-ME', cast=str)
+#          'NAME': config('POSTGRES_DB', default='CHANGE-ME', cast=str)',
+#          'USER': config('POSTGRES_USER', default='CHANGE-ME', cast=str),
+#          'PASSWORD': config('POSTGRES_PASSWORD', default='CHANGE-ME', cast=str),
+#          'HOST': config('POSTGRES_HOST', default='CHANGE-ME', cast=str),
+#          'PORT': config('POSTGRES_PORT', default='CHANGE-ME', cast=str)
+#     }
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -154,9 +185,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "pt-br"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "America/Sao_Paulo"
 
 USE_I18N = True
 
@@ -173,8 +204,4 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
 
