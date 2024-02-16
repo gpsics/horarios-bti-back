@@ -87,6 +87,8 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
         except ObjectDoesNotExist:
             pass
 
+        return str(codigo).upper()
+
     # Função para validar o nome de um componente curricular
     def validate_nome_comp(self, nome):
         # Verifica se o nome do componente contém pelo menos um caractere
@@ -106,7 +108,7 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
         if not padrao.fullmatch(nome):
             raise serializers.ValidationError("O nome do componente deve conter apenas letras e espaços.")
 
-        return nome
+        return str(nome).upper()
 
     def validate_obrigatorio(self, obrigatorio):
         # Verifica se o campo obrigatório é do tipo Boolean

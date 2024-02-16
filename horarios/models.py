@@ -34,7 +34,6 @@ class ComponenteCurricular(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        self.codigo = self.codigo.upper()
         self.nome_comp = self.nome_comp.upper()
         super(ComponenteCurricular, self).save(*args, **kwargs)
 

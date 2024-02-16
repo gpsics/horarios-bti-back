@@ -8,9 +8,9 @@ from rest_framework_simplejwt.views import (
 )
 
 router = routers.DefaultRouter()
-router.register(r'componentes', ComponenteCurricularViewSet)
-router.register(r'professores', ProfessorViewSet)
-router.register(r'turmas', TurmaViewSet)
+router.register(r'componentes', ComponenteCurricularViewSet, basename='componente')
+router.register(r'professores', ProfessorViewSet, basename='professor')
+router.register(r'turmas', TurmaViewSet, basename='turma')
 
 urlpatterns = [
     path('', include(router.urls)),

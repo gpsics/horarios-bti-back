@@ -14,13 +14,15 @@ from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, Tu
 
 # View que está mostrando todos os objetos criados de Componente Curricular
 class ComponenteCurricularViewSet(viewsets.ModelViewSet):
-    queryset = ComponenteCurricular.objects.all().order_by('nome_comp')
     serializer_class = ComponenteCurricularSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return ComponenteCurricular.objects.all().order_by('nome_comp')
+
     def retrieve(self, request, *args, **kwargs):
         try:
-            componente = self.queryset.get(pk=kwargs.get('pk'))
+            componente = self.get_queryset().get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
             return Response({"detail": "Componente Curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -28,10 +30,10 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def list(self, request, *args, **kwargs):
-        if not self.queryset:
+        if not self.get_queryset():
             return Response({"detail": "Nenhum componente curricular encontrado."}, status=status.HTTP_200_OK)
 
-        serializer = ComponenteCurricularSerializer(self.queryset, many=True)
+        serializer = ComponenteCurricularSerializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
@@ -71,7 +73,7 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            componente = self.queryset.get(pk=kwargs.get('pk'))
+            componente = self.get_queryset().get(pk=kwargs.get('pk'))
             componente.delete()
         except ObjectDoesNotExist:
             return Response({"detail": "Componente curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
@@ -81,13 +83,15 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
 
 # View que está mostrando todos os objetos \criados de Professor
 class ProfessorViewSet(viewsets.ModelViewSet):
-    queryset = Professor.objects.all().order_by('nome_prof')
     serializer_class = ProfessorSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return Professor.objects.all().order_by('nome_prof')
+
     def retrieve(self, request, *args, **kwargs):
         try:
-            professor = self.queryset.get(pk=kwargs.get('pk'))
+            professor = self.get_queryset().get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
             return Response({"detail": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -95,10 +99,10 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def list(self, request, *args, **kwargs):
-        if not self.queryset:
+        if not self.get_queryset():
             return Response({"detail": "Nenhum professor(a) foi encontrado."}, status=status.HTTP_200_OK)
 
-        serializer = ProfessorSerializer(self.queryset, many=True)
+        serializer = ProfessorSerializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
@@ -138,7 +142,7 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            professor = self.queryset.get(pk=kwargs.get('pk'))
+            professor = self.get_queryset().get(pk=kwargs.get('pk'))
             professor.delete()
         except ObjectDoesNotExist:
             return Response({"detail": "Professor(a) não foi encontrado."}, status=status.HTTP_404_NOT_FOUND)
@@ -148,8 +152,10 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 
 # View que está mostrando todos os objetos criados de Turma
 class TurmaViewSet(viewsets.ModelViewSet):
-    queryset = Turma.objects.all()
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Turma.objects.all()
 
     def split_horarios(self, horario):
         vetor_horarios = set(horario.split())
@@ -256,7 +262,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
         aux_turma = None
         is_equal_num_turma = False
         if int(id_turma) != 0:
-            aux_turma = self.queryset.get(pk=id_turma)
+            aux_turma = self.get_queryset().get(pk=id_turma)
             if turma.get("num_turma") == aux_turma.num_turma:
                 is_equal_num_turma = True
 
@@ -308,7 +314,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         try:
-            turma = self.queryset.get(pk=kwargs.get('pk'))
+            turma = self.get_queryset().get(pk=kwargs.get('pk'))
         except ObjectDoesNotExist:
             return Response({"detail": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -316,10 +322,10 @@ class TurmaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def list(self, request, *args, **kwargs):
-        if not self.queryset:
+        if not self.get_queryset():
             return Response({"detail": "Nenhuma turma encontrada."}, status=status.HTTP_200_OK)
 
-        serializer = TurmaSerializerFormatado(self.queryset, many=True)
+        serializer = TurmaSerializerFormatado(self.get_queryset(), many=True)
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
@@ -384,7 +390,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         try:
-            turma = self.queryset.get(pk=kwargs.get('pk'))
+            turma = self.get_queryset().get(pk=kwargs.get('pk'))
             turma.delete()
         except ObjectDoesNotExist:
             return Response({"detail": "Turma não encontrada."}, status=status.HTTP_404_NOT_FOUND)
