@@ -1,5 +1,5 @@
 from ..models import ComponenteCurricular, Professor, Turma
-from ..services import ComponenteCurricularService
+from ..services import ComponenteCurricularService, TurmaService
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ObjectDoesNotExist
@@ -25,16 +25,16 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
         required=True,
         max_length=7,
         min_length=7,
-        error_messages={'codigo': 'É necessário informar o código do componente curricular.'})
+        error_messages={'required': 'É necessário informar o código do componente curricular.'})
 
     nome_comp = serializers.CharField(
         required=True,
         allow_blank=True,
-        error_messages={'nome_comp': 'É necessário informar o nome do componente curricular.'})
+        error_messages={'required': 'É necessário informar o nome do componente curricular.'})
 
     num_semestre = serializers.IntegerField(
         required=True,
-        error_messages={'num_semestre': 'É necessário informar o número do semestre do componente curricular.'})
+        error_messages={'required': 'É necessário informar o número do semestre do componente curricular.'})
 
     obrigatorio = serializers.BooleanField(
         required=False,
@@ -44,7 +44,7 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
         required=True,
         max_digits=4,
         decimal_places=0,
-        error_messages={'carga_horaria': 'É necessário informar a carga horária do componente curricular.'})
+        error_messages={'required': 'É necessário informar a carga horária do componente curricular.'})
 
     departamento = serializers.ChoiceField(
         required=True,
@@ -153,7 +153,7 @@ class ProfessorSerializer(serializers.ModelSerializer):
     nome_prof = serializers.CharField(
         required=True,
         allow_blank=True,
-        error_messages={'nome_prof': 'É necessário informar o nome do professor(a).'}
+        error_messages={'required': 'É necessário informar o nome do professor(a).'}
     )
 
     class Meta:
@@ -175,14 +175,87 @@ class ProfessorSerializer(serializers.ModelSerializer):
 
         professores = Professor.objects.filter(nome_prof=nome)
         if professores.exists():
-            raise serializers.ValidationError("Já existe um professor com o nome {nome}.")
+            raise serializers.ValidationError(f"Já existe um professor com o nome {nome}.")
 
         return nome
 
 
 # Serializer dos dados de uma Turma
 class TurmaSerializer(serializers.ModelSerializer):
-    num_vagas = serializers.IntegerField(required=False, default=0)
+    cod_componente = serializers.PrimaryKeyRelatedField(
+        queryset=ComponenteCurricular.objects.all(),
+        required=True,
+        error_messages={'required': 'É necessário informar o componente curricular da turma.'})
+
+    num_turma = serializers.IntegerField(
+        required=True,
+        error_messages={'required': 'É necessário informar o número da turma.'})
+
+    horario = serializers.CharField(
+        required=True,
+        max_length=80,
+        error_messages={'required': 'É necessário informar o horário da turma.'})
+
+    num_vagas = serializers.IntegerField(
+        required=False,
+        default=0)
+
+    professor = serializers.PrimaryKeyRelatedField(
+        queryset=Professor.objects.all(),
+        many=True)
+
+    def validate(self, data):
+        errors = None
+
+        num_turma = data.get('num_turma')
+        if num_turma:
+            valid = TurmaService.validate_numero(data.get('cod_componente'), num_turma)
+            errors = valid if (result := valid) is not None else errors
+        else:
+            raise serializers.ValidationError(f"É necessário informar o número da turma.")
+
+        horario = data.get('horario')
+        if horario:
+            valid = TurmaService.validate_horario(horario, data.get('cod_componente').carga_horaria)
+            errors = valid if (result := valid) is not None else errors
+        else:
+            raise serializers.ValidationError(f"É necessário informar o horário da turma.")
+
+        professores = data.get('professor')
+        if professores:
+            valid = TurmaService.validate_professores(data.get('cod_componente'), professores)
+            errors = valid if (result := valid) is not None else errors
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return data
+
+    def validate_cod_componente(self, cod_componente):
+        if not cod_componente:
+            raise serializers.ValidationError(f"É necessário informar um componente para a turma.")
+
+        codigo = str(cod_componente.codigo).upper()
+
+        if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
+            raise serializers.ValidationError(f"Formato inválido do código ({codigo}).")
+
+        componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
+        if not componente:
+            raise serializers.ValidationError(f"Não existe componente curricular com esse código ({codigo}).")
+
+        return componente
+
+    def validate_num_vagas(self, num_vagas):
+        try:
+            num_vagas = int(num_vagas)
+        except ValueError:
+            raise serializers.ValidationError(f"O campo de número de vagas deve conter apenas números inteiros.")
+
+        if num_vagas < 0:
+            raise serializers.ValidationError(f"O número de vagas ({num_vagas}) deve ser positivo.")
+
+        return num_vagas
 
     class Meta:
         model = Turma
@@ -191,6 +264,7 @@ class TurmaSerializer(serializers.ModelSerializer):
 
 # Serializer dos dados de uma Turma com o horário formatado
 class TurmaSerializerFormatado(serializers.ModelSerializer):
+
     horario = serializers.SerializerMethodField('get_horario')
 
     class Meta:

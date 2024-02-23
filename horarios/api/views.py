@@ -3,9 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.core.exceptions import ObjectDoesNotExist
-from decimal import Decimal
 from django.http import Http404
-import re
 
 from horarios.models import ComponenteCurricular, Professor, Turma
 from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, \
@@ -157,161 +155,6 @@ class TurmaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Turma.objects.all()
 
-    def split_horarios(self, horario):
-        vetor_horarios = set(horario.split())
-
-        for index, horario in enumerate(list(vetor_horarios)):
-            if re.match(r'^[2-7]+[MmTtNn][1-6]+$', horario):
-                # Verifica se a possibilidade de quebrar o horá\rio em partes menores
-                if len(horario) > 3:
-                    dias = "".join(sorted(re.sub(r'[MmNnTt].*', '', horario)))
-                    turno = re.search(r'[MmNnTt]', horario).group()
-                    horas = "".join(sorted(re.sub(r'^.*[MmNnTt]', '', horario)))
-
-                    for dia in list(dias):
-                        for hora in list(horas):
-                            aux_horario = dia + turno + hora
-                            vetor_horarios.add(aux_horario)
-
-                    vetor_horarios.remove(horario)
-
-        return " ".join(vetor_horarios)
-
-    def validate_codigo_turma(self, codigo):
-        if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
-            return f"Formato inválido do código ({codigo})."
-
-        componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
-        if not componente:
-            return f"Não existe componente curricular com esse código ({codigo})."
-
-    def validate_numero_turma(self, codigo, num_turma):
-        if not num_turma:
-            return f'É necessário informar o número da turma.'
-
-        try:
-            num_turma = int(num_turma)
-        except ValueError:
-            return f"O campo de número da turma deve conter apenas números inteiros."
-
-        if num_turma < 1:
-            return f"O número da turma ({num_turma}) deve maior que 0."
-
-        turma = Turma.objects.filter(cod_componente=codigo, num_turma=num_turma)
-        if turma.exists():
-            return f"Já existe uma turma com esse código e número ({codigo} - {num_turma})."
-
-    def validate_horario_turma(self, horarios, carga_horaria):
-        vetor_horarios = list(set(horarios.split()))
-        contador_h = 0
-
-        # Verifica se o horário está dentro do limite para a carga horária do componente
-        if not len(vetor_horarios) == carga_horaria / 15:
-            return f'O horário ({horarios}) não corresponde a carga horária da turma.'
-
-        for index in range(len(vetor_horarios)):
-            # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
-            if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
-                return f'Formato inválido do horário ({vetor_horarios[index]}).'
-
-            # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
-            if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
-                return f'Formato inválido do horário ({vetor_horarios[index]}).'
-
-            # Ordena de forma crescente as partes contendo número na expressão
-            dias = "".join(re.sub(r'[MmNnTt].*', '', vetor_horarios[index]))
-            horas = "".join(re.sub(r'^.*[MmNnTt]', '', vetor_horarios[index]))
-
-            # Verifica se nas partes contendo números, contém apenas números
-            if re.search(r'[a-zA-Z]', dias) or re.search(r'[a-zA-Z]', horas):
-                return f'Formato inválido do horário ({vetor_horarios[index]}).'
-
-            # Incrementa a quantidade de horas no horario no contador_h
-            contador_h += len(dias) * len(horas)
-
-            turno = (re.search(r'[MmNnTt]', vetor_horarios[index])).group().upper()
-
-            # Após as informações serem ordenadas e verificadas, são postas na string novamente
-            vetor_horarios[index] = dias + turno + horas
-
-        # Verifica se a quantidade de horas presente no horário está correto
-        if not contador_h == carga_horaria / 15:
-            return f'A quantidade de horas no horário está inválida ({contador_h} - {carga_horaria}).'
-
-    def validate_vagas_turma(self, num_vagas):
-        try:
-            num_vagas = int(num_vagas)
-        except ValueError:
-            return f"O campo de número de vagas deve conter apenas números inteiros."
-
-        if num_vagas < 0:
-            return f"O número de vagas ({num_vagas}) deve ser positivo."
-
-    def validate_professores_turma(self, codigo, professores):
-        for id_professor in professores:
-            professor = Professor.objects.get(pk=id_professor)
-            componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
-
-            if componente:
-                if (professor.horas_semanais + Decimal(componente.carga_horaria / 15)) > 20:
-                    return f"Quantidade máxima de horas semanais do professor ({professor}) alcançada."
-
-    def validate_turma(self, turma, id_turma=0, request=""):
-        validation_errors = {}
-
-        aux_turma = None
-        is_equal_num_turma = False
-        if int(id_turma) != 0:
-            aux_turma = self.get_queryset().get(pk=id_turma)
-            if turma.get("num_turma") == aux_turma.num_turma:
-                is_equal_num_turma = True
-
-        if 'cod_componente' in turma:
-            cod_componente = self.validate_codigo_turma(turma.get("cod_componente").upper())
-            if cod_componente:
-                validation_errors['cod_componente'] = cod_componente
-        elif request != "PATCH":
-            validation_errors['cod_componente'] = f'Campo obrigatório.'
-
-        if 'num_turma' in turma:
-            if 'cod_componente' in turma and not is_equal_num_turma:
-                num_turma = self.validate_numero_turma(turma.get("cod_componente"), turma.get("num_turma"))
-                if num_turma:
-                    validation_errors['num_turma'] = num_turma
-        elif request != "PATCH":
-            validation_errors['num_turma'] = f'Campo obrigatório.'
-
-        if 'horario' in turma:
-            componente = ComponenteCurricular.objects.filter(codigo=turma.get("cod_componente")).first()
-            if componente:
-                horario = self.validate_horario_turma(turma.get("horario").upper(), componente.carga_horaria)
-                if horario:
-                    validation_errors['horario'] = horario
-        elif request != "PATCH":
-            validation_errors['horario'] = f'Campo obrigatório.'
-
-        if 'num_vagas' in turma:
-            vagas = self.validate_vagas_turma(turma.get("num_vagas"))
-            if vagas:
-                validation_errors['num_vagas'] = vagas
-
-        if 'professor' in turma:
-            try:
-                professores = turma.get("professor")
-
-                if aux_turma:
-                    professores_aux = list(aux_turma.professor.values_list('id', flat=True))
-                    professores = [prof for prof in professores if prof not in professores_aux]
-
-                if professores:
-                    professor = self.validate_professores_turma(turma.get("cod_componente"), professores)
-                    if professor:
-                        validation_errors['professor'] = professor
-            except ObjectDoesNotExist:
-                pass
-
-        return validation_errors
-
     def retrieve(self, request, *args, **kwargs):
         try:
             turma = self.get_queryset().get(pk=kwargs.get('pk'))
@@ -329,39 +172,22 @@ class TurmaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-
-        if 'horario' in data:
-            data['horario'] = self.split_horarios(data.get("horario"))
-
-        validation_errors = self.validate_turma(data)
-        if validation_errors:
-            return Response(data=validation_errors, status=400)
-
-        serializer = TurmaSerializer(data=data)
+        serializer = TurmaSerializer(data=request.data)
 
         if serializer.is_valid():
             serializer.save()
-            return Response(data=serializer.data, status=201)
-        else:
-            return Response(data=serializer.errors, status=400)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def update(self, request, *args, **kwargs):
         try:
             turma = self.get_object()
-            data = request.data.copy()
+            serializer = TurmaSerializer(turma, data=request.data)
 
-            if 'horario' in data:
-                data['horario'] = self.split_horarios(data.get("horario"))
-
-            validation_errors = self.validate_turma(data, kwargs.get('pk'))
-            if validation_errors:
-                return Response(data=validation_errors, status=status.HTTP_400_BAD_REQUEST)
-
-            serializer = TurmaSerializer(turma, data=data)
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Http404:
@@ -370,16 +196,8 @@ class TurmaViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         try:
             turma = self.get_object()
-            data = request.data.copy()
-
-            if 'horario' in data:
-                data['horario'] = self.split_horarios(data.get("horario"))
-
-            validation_errors = self.validate_turma(data, kwargs.get('pk'))
-            if validation_errors:
-                return Response(data=validation_errors, status=status.HTTP_400_BAD_REQUEST)
-
             serializer = TurmaSerializer(turma, data=request.data, partial=True)
+
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_200_OK)
