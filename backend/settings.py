@@ -29,7 +29,7 @@ config = Config(RepositoryEnv(relative_dotenv_file))
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -153,13 +153,13 @@ DATABASES = {
 
 # DATABASES = {
 #      'default': {
-#          'ENGINE': config('DB_ENGINE', default='CHANGE-ME', cast=str)
-#          'NAME': config('POSTGRES_DB', default='CHANGE-ME', cast=str)',
-#          'USER': config('POSTGRES_USER', default='CHANGE-ME', cast=str),
-#          'PASSWORD': config('POSTGRES_PASSWORD', default='CHANGE-ME', cast=str),
-#          'HOST': config('POSTGRES_HOST', default='CHANGE-ME', cast=str),
-#          'PORT': config('POSTGRES_PORT', default='CHANGE-ME', cast=str)
-#     }
+#          'ENGINE': config('DB_ENGINE', default='CHANGE-ME', cast=str),
+#          'NAME': config('BD_NAME', default='CHANGE-ME', cast=str),
+#          'USER': config('BD_USER', default='CHANGE-ME', cast=str),
+#          'PASSWORD': config('BD_PASSWORD', default='CHANGE-ME', cast=str),
+#          'HOST': config('BD_HOST', default='CHANGE-ME', cast=str),
+#          'PORT': config('BD_PORT', default='CHANGE-ME', cast=str)
+#      }
 # }
 
 
