@@ -1,9 +1,12 @@
-from ..models import ComponenteCurricular, Professor, Turma
-from ..services import ComponenteCurricularService, TurmaService
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.core.exceptions import ObjectDoesNotExist
+from decimal import Decimal
 import re
+
+from ..models import ComponenteCurricular, Professor, Turma
+from ..services import TurmaService
 
 
 # Serializer de customização do token JWT
@@ -25,80 +28,68 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
         required=True,
         max_length=7,
         min_length=7,
+        validators=[UniqueValidator(queryset=ComponenteCurricular.objects.all(), lookup="iexact",
+                                    message="Já existe um componente com esse código.")],
         error_messages={'required': 'É necessário informar o código do componente curricular.'})
 
     nome_comp = serializers.CharField(
         required=True,
         allow_blank=True,
-        error_messages={'required': 'É necessário informar o nome do componente curricular.'})
+        max_length=80,
+        error_messages={'required': 'É necessário informar o nome do componente curricular.',
+                        'max_length': 'O nome do componente deve ter no máximo 80 caracteres'})
 
     num_semestre = serializers.IntegerField(
         required=True,
-        error_messages={'required': 'É necessário informar o número do semestre do componente curricular.'})
+        error_messages={'required': 'É necessário informar o número do semestre do componente curricular.',
+                        'invalid': 'Valor inválido. Informe um valor inteiro válido.'})
 
     obrigatorio = serializers.BooleanField(
         required=False,
-        default=False)
+        default=False,
+        error_messages={'invalid': 'O valor inválido. Informe um valor booleano (true/false).'})
 
     carga_horaria = serializers.DecimalField(
         required=True,
         max_digits=4,
         decimal_places=0,
-        error_messages={'required': 'É necessário informar a carga horária do componente curricular.'})
+        error_messages={'required': 'É necessário informar a carga horária do componente curricular.',
+                        'invalid': 'Valor inválido. Informe um valor inteiro válido.'})
 
     departamento = serializers.ChoiceField(
         required=True,
         choices=ComponenteCurricular.DEPARTAMENTO,
-        error_messages={
-            'required': 'É necessário informar o departamento do componente curricular',
-            'invalid_choice': 'É necessário escolher uma opção válida para o departamento.'
-        })
+        error_messages={'required': 'É necessário informar o departamento do componente curricular',
+                        'invalid_choice': 'É necessário escolher uma opção válida para o departamento.'})
 
     class Meta:
         model = ComponenteCurricular
         fields = ['codigo', 'nome_comp', 'num_semestre', 'carga_horaria', 'departamento', 'obrigatorio']
 
+    # Validações compostas do componente curricular
     def validate(self, data):
-        errors = ComponenteCurricularService.validate_semestre_obrigatorio(data.get('num_semestre'), data.get('obrigatorio'))
-        if errors:
-            raise serializers.ValidationError(errors)
+        if 'num_semestre' in data:
+            # Verifica se o componenete é obrigatório e se está com o número de semestre é igual a 0
+            if data['num_semestre'] == 0 and data['obrigatorio']:
+                raise serializers.ValidationError({"num_semestre": "O componente quando obrigatório deve possuir um "
+                                                                   "semestre diferente de 0."})
 
         return data
 
-    # Função para validar o código de um componente curricular
+    # Validação do código dos componentes curriculares
     def validate_codigo(self, codigo):
-        # Verifica se o código não está vázio
-        if not codigo:
-            raise serializers.ValidationError("É necessário informar o código do componente.")
-
         # Verifica se o código possui o tamanho correto
         if len(codigo) != 7:
             raise serializers.ValidationError("O código do componente deve ter 7 caracteres alfanuméricos.")
 
-        # Verifica se o código está no formato correto com uso de regex (Ex. LLL0000)
-        if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
+        # Verifica se o código está no formato correto (Ex. LLL0000)
+        if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo.upper()):
             raise serializers.ValidationError(f"Formato inválido do código ({codigo}).")
-
-        # Verifica se o código passado corresponde a um componente já existente
-        try:
-            componente = ComponenteCurricular.objects.get(pk=codigo)
-            if componente:
-                raise serializers.ValidationError(f"Já existe um componente com esse código ({codigo}).")
-        except ObjectDoesNotExist:
-            pass
 
         return str(codigo).upper()
 
-    # Função para validar o nome de um componente curricular
+    # Validação do nome dos componentes curriculares
     def validate_nome_comp(self, nome):
-        # Verifica se o nome do componente contém pelo menos um caractere
-        if not nome:
-            raise serializers.ValidationError("O nome do componente deve ser informado.")
-
-        # Verifica se o campo nome do componente é uma String
-        if not isinstance(nome, str):
-            raise serializers.ValidationError("O campo de nome do componente deve ser uma String.")
-
         # Verifica se o nome do componente contém pelo menos um caractere
         if len(nome) > 80:
             raise serializers.ValidationError("O nome do componente deve ter no máximo 80 caracteres.")
@@ -110,20 +101,8 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
 
         return str(nome).upper()
 
-    def validate_obrigatorio(self, obrigatorio):
-        # Verifica se o campo obrigatório é do tipo Boolean
-        if not isinstance(obrigatorio, bool):
-            raise serializers.ValidationError("O campo obrigatório deve ter um valor booleano (True ou False).")
-
-        return obrigatorio
-
-    # Função para validar o número do semestre de um componente curricular
+    # Validação do número do semestre dos componentes curriculares
     def validate_num_semestre(self, semestre):
-        try:
-            semestre = int(semestre)
-        except ValueError:
-            raise serializers.ValidationError("O campo de número de semestre deve ser um número inteiro.")
-
         # Verifica se o semestre é um número menor que 0
         if semestre < 0:
             raise serializers.ValidationError(f"O número do semestre ({semestre}) deve ser maior ou igual a 0.")
@@ -134,13 +113,8 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
 
         return semestre
 
-    # Função para validar a carga horária de um componente curricular
+    # Validação da carga horária dos componentes curriculares
     def validate_carga_horaria(self, carga):
-        try:
-            carga = int(carga)
-        except ValueError:
-            raise serializers.ValidationError("O campo da carga horário deve ser um número inteiro.")
-
         # Verifica se a carga horária do componente é divisível por 15 e maior que 0
         if carga < 0 or not carga % 15 == 0:
             raise serializers.ValidationError(f"Carga horária ({carga}) deve maior que 0 e divisível por 15.")
@@ -153,29 +127,25 @@ class ProfessorSerializer(serializers.ModelSerializer):
     nome_prof = serializers.CharField(
         required=True,
         allow_blank=True,
-        error_messages={'required': 'É necessário informar o nome do professor(a).'}
+        max_length=80,
+        validators=[UniqueValidator(queryset=Professor.objects.all(), lookup="iexact",
+                                    message="Já existe um professor com esse nome.")],
+        error_messages={'required': 'É necessário informar o nome do professor(a).',
+                        'max_length': 'O nome do professor deve ter no máximo 80 caracteres.',}
     )
 
     class Meta:
         model = Professor
         fields = ['id', 'nome_prof', 'horas_semanais']  # 'url'
 
+    # Validação do nome dos professores
     def validate_nome_prof(self, nome):
-        if not nome:
-            raise serializers.ValidationError("O nome do professor deve ser informado.")
-
         nome = re.sub(r'\s+', ' ', nome).upper().strip()
 
-        if len(nome) > 80:
-            raise serializers.ValidationError("O nome do professor deve ter no máximo 80 caracteres.")
-
+        # Verifica se o nome do professor contém apenas letras e espaços, nada de caracteres especiais
         padrao = re.compile(r'[a-zA-ZÀ-ú\s]+')
         if not padrao.fullmatch(nome):
             raise serializers.ValidationError("O nome do professor deve conter apenas letras e espaços.")
-
-        professores = Professor.objects.filter(nome_prof=nome)
-        if professores.exists():
-            raise serializers.ValidationError(f"Já existe um professor com o nome {nome}.")
 
         return nome
 
@@ -189,7 +159,8 @@ class TurmaSerializer(serializers.ModelSerializer):
 
     num_turma = serializers.IntegerField(
         required=True,
-        error_messages={'required': 'É necessário informar o número da turma.'})
+        error_messages={'required': 'É necessário informar o número da turma.',
+                        'invalid': 'Valor inválido. Informe um valor inteiro válido.'})
 
     horario = serializers.CharField(
         required=True,
@@ -198,43 +169,129 @@ class TurmaSerializer(serializers.ModelSerializer):
 
     num_vagas = serializers.IntegerField(
         required=False,
-        default=0)
+        default=0,
+        error_messages={'invalid': 'Valor inválido. Informe um valor inteiro válido.'})
 
     professor = serializers.PrimaryKeyRelatedField(
         queryset=Professor.objects.all(),
-        many=True)
+        many=True,
+        required=False,
+        error_messages={'invalid': 'Teste'})
 
+    # Validações compostas de turmas
     def validate(self, data):
-        errors = None
-
+        # Validação do número das turmas
         num_turma = data.get('num_turma')
-        if num_turma:
-            valid = TurmaService.validate_numero(data.get('cod_componente'), num_turma)
-            errors = valid if (result := valid) is not None else errors
-        else:
-            raise serializers.ValidationError(f"É necessário informar o número da turma.")
+        if 'num_turma' in data:
+            if num_turma < 1:
+                raise serializers.ValidationError({"num_turma": f"O número da turma ({num_turma}) deve maior que 0."})
 
-        horario = data.get('horario')
-        if horario:
-            valid = TurmaService.validate_horario(horario, data.get('cod_componente').carga_horaria)
-            errors = valid if (result := valid) is not None else errors
-        else:
-            raise serializers.ValidationError(f"É necessário informar o horário da turma.")
+            if self.instance:
+                componente = self.instance.cod_componente
+                turma = Turma.objects.filter(cod_componente=componente, num_turma=num_turma).exclude(pk=self.instance.id)
+            else:
+                componente = data.get('cod_componente')
+                turma = Turma.objects.filter(cod_componente=componente, num_turma=num_turma)
 
+            if turma.exists():
+                raise serializers.ValidationError({"num_turma": f"Já existe uma turma com esse código e número "
+                                                                    f"({componente.codigo} - {num_turma})."})
+
+        # Validação do horário das turmas
+        horarios = data.get('horario')
+        if 'horario' in data:
+            if self.instance:
+                carga_horaria = self.instance.cod_componente.carga_horaria
+            else:
+                carga_horaria = data.get('cod_componente').carga_horaria
+
+            vetor_horarios = TurmaService.split_horarios(horarios)
+            contador_h = 0
+
+            # Verifica se o horário está dentro do limite para a carga horária do componente
+            if not len(vetor_horarios) == carga_horaria / 15:
+                raise serializers.ValidationError({"horario": f'O horário ({horarios}) não corresponde a carga horária '
+                                                              f'({carga_horaria}) da turma.'})
+
+            for index in range(len(vetor_horarios)):
+                # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
+                if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
+                    raise serializers.ValidationError({"horario": f'Formato inválido do horário '
+                                                                  f'({vetor_horarios[index]}).'})
+
+                # Verifica se o horário está seguindo a sua expressão regular ou seu modelo
+                if not re.match(r'^[2-7]+[MmTtNn][1-6]+$', vetor_horarios[index]):
+                    raise serializers.ValidationError({"horario": f'Formato inválido do horário '
+                                                                  f'({vetor_horarios[index]}).'})
+
+                # Ordena de forma crescente as partes contendo número na expressão
+                dias = "".join(re.sub(r'[MmNnTt].*', '', vetor_horarios[index]))
+                horas = "".join(re.sub(r'^.*[MmNnTt]', '', vetor_horarios[index]))
+
+                # Verifica se nas partes contendo números, contém apenas números
+                if re.search(r'[a-zA-Z]', dias) or re.search(r'[a-zA-Z]', horas):
+                    raise serializers.ValidationError({"horario": f'Formato inválido do horário '
+                                                                  f'({vetor_horarios[index]}).'})
+
+                # Incrementa a quantidade de horas no horario no contador_h
+                contador_h += len(dias) * len(horas)
+
+                turno = (re.search(r'[MmNnTt]', vetor_horarios[index])).group().upper()
+
+                # Após as informações serem ordenadas e verificadas, são postas na string novamente
+                vetor_horarios[index] = dias + turno + horas
+
+            # Verifica se a quantidade de horas presente no horário está correto
+            if not contador_h == carga_horaria / 15:
+                raise serializers.ValidationError({"horario": f'A quantidade de horas no horário está inválida '
+                                                              f'({contador_h} - {carga_horaria}).'})
+
+            data['horario'] = " ".join(vetor_horarios)
+
+        # Validação dos professores das turmas
         professores = data.get('professor')
-        if professores:
-            valid = TurmaService.validate_professores(data.get('cod_componente'), professores)
-            errors = valid if (result := valid) is not None else errors
+        if 'professor' in data:
+            for id_professor in professores:
+                try:
+                    professor = Professor.objects.get(pk=id_professor.id)
+                except ObjectDoesNotExist:
+                    raise serializers.ValidationError({"professor": f"Professor com Id ({id_professor}) não encontrado."})
 
-        if errors:
-            raise serializers.ValidationError(errors)
+                if self.instance:
+                    componente = self.instance.cod_componente
+                else:
+                    componente = data.get('cod_componente')
+
+                if componente:
+                    if (professor.horas_semanais + Decimal(componente.carga_horaria / 15)) > 20:
+                        raise serializers.ValidationError({"professor": f"Quantidade máxima de horas semanais do "
+                                                                        f"professor(a) ({professor}) alcançada."})
 
         return data
 
-    def validate_cod_componente(self, cod_componente):
-        if not cod_componente:
-            raise serializers.ValidationError(f"É necessário informar um componente para a turma.")
+        # if num_turma:
+        #     valid = TurmaService.validate_numero(data.get('cod_componente'), num_turma)
+        #     errors = valid if (result := valid) is not None else errors
+        # else:
+        #     raise serializers.ValidationError(f"É necessário informar o número da turma.")
 
+        # horario = data.get('horario')
+        # if horario:
+        #     valid = TurmaService.validate_horario(horario, data.get('cod_componente').carga_horaria)
+        #     errors = valid if (result := valid) is not None else errors
+        # else:
+        #     raise serializers.ValidationError(f"É necessário informar o horário da turma.")
+
+        # professores = data.get('professor')
+        # if professores:
+        #     valid = TurmaService.validate_professores(data.get('cod_componente'), professores)
+        #     errors = valid if (result := valid) is not None else errors
+        #
+        # if errors:
+        #     raise serializers.ValidationError(errors)
+
+    # Validação do código do componente das turmas
+    def validate_cod_componente(self, cod_componente):
         codigo = str(cod_componente.codigo).upper()
 
         if not re.match(r'^([A-Z]{3})([0-9]{4})$', codigo):
@@ -242,16 +299,12 @@ class TurmaSerializer(serializers.ModelSerializer):
 
         componente = ComponenteCurricular.objects.filter(codigo=codigo).first()
         if not componente:
-            raise serializers.ValidationError(f"Não existe componente curricular com esse código ({codigo}).")
+            raise serializers.ValidationError(f"Não existe um componente curricular com esse código ({codigo}).")
 
         return componente
 
+    # Validação do número de vagas das turmas
     def validate_num_vagas(self, num_vagas):
-        try:
-            num_vagas = int(num_vagas)
-        except ValueError:
-            raise serializers.ValidationError(f"O campo de número de vagas deve conter apenas números inteiros.")
-
         if num_vagas < 0:
             raise serializers.ValidationError(f"O número de vagas ({num_vagas}) deve ser positivo.")
 
@@ -264,7 +317,6 @@ class TurmaSerializer(serializers.ModelSerializer):
 
 # Serializer dos dados de uma Turma com o horário formatado
 class TurmaSerializerFormatado(serializers.ModelSerializer):
-
     horario = serializers.SerializerMethodField('get_horario')
 
     class Meta:
