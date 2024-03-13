@@ -40,7 +40,7 @@ Para instalar e executar o Gerenciador de Horários localmente, siga e execute o
 	
 - **Passo 4** - Instale as dependências
 	~~~
-	pip install -r requirements.txt
+	pip install -r requirements-dev.txt
 	~~~	
 
 - **Passo 5** - Na pasta `dotenv_files`, crie uma cópia do arquivo `.env-example` e o renomeei `.env`
