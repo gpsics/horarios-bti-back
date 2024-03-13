@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from drf_spectacular.utils import extend_schema_field, extend_schema
 from django.core.exceptions import ObjectDoesNotExist
 from decimal import Decimal
 import re
@@ -323,6 +324,7 @@ class TurmaSerializerFormatado(serializers.ModelSerializer):
         model = Turma
         fields = ['id', 'cod_componente', 'num_turma', 'horario', 'num_vagas', 'professor']
 
+    @extend_schema_field(str)
     def get_horario(self, Turma):
         def estruturar_horario(horarios, recursive=True):
             vetor_horarios = []

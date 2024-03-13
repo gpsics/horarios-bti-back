@@ -10,7 +10,6 @@ from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, Tu
     TurmaSerializerFormatado, HorariosSerializer, ConflitosSerializer
 
 
-# View que está mostrando todos os objetos criados de Componente Curricular
 class ComponenteCurricularViewSet(viewsets.ModelViewSet):
     serializer_class = ComponenteCurricularSerializer
     permission_classes = [IsAuthenticated]
@@ -77,6 +76,7 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Componente curricular não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"detail": "Componente curricular excluído com sucesso."}, status=status.HTTP_204_NO_CONTENT)
+# View que está mostrando todos os objetos criados de Componente Curricular
 
 
 # View que está mostrando todos os objetos \criados de Professor
@@ -154,6 +154,9 @@ class TurmaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Turma.objects.all()
+
+    def get_serializer_class(self):
+        return TurmaSerializerFormatado if self.action == 'get' or 'list' else TurmaSerializer
 
     def retrieve(self, request, *args, **kwargs):
         try:

@@ -16,8 +16,8 @@ urlpatterns = [
     path('', include(router.urls)),
 
     path('horarios/professores/<int:id_prof>/', HorariosViewSet.as_view({'get': 'horarios_prof'}), name='horarios_prof'),
-    path('horarios/componentes/<cod>/', HorariosViewSet.as_view({'get': 'horarios_comp'}), name='horarios_comp'),
-    path('horarios/semestre/<semestre>/', HorariosViewSet.as_view({'get': 'horarios_semestre'}), name='horarios_semestre'),
+    path('horarios/componentes/<str:cod>/', HorariosViewSet.as_view({'get': 'horarios_comp'}), name='horarios_comp'),
+    path('horarios/semestre/<int:semestre>/', HorariosViewSet.as_view({'get': 'horarios_semestre'}), name='horarios_semestre'),
     path('horarios/conflitos/', HorariosViewSet.as_view({'get': 'horarios_conflitos'}), name='horarios_conflitos'),
 
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
