@@ -1,28 +1,14 @@
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework import routers
-from .views import UserViewSet, GroupViewSet
-from horarios.api.views import ComponenteCurricularViewSet, ProfessorViewSet, TurmaViewSet, ListaTurmasProfessor, ListaTurmasComponente, ListaTurmasSemestre, ListaHorariosComponente, ListaHorariosSemestre, ListaHorariosProfessor
-from rest_framework.authtoken import views
-
-router = routers.DefaultRouter()
-router.register(r'users', UserViewSet)
-router.register(r'groups', GroupViewSet)
-router.register(r'componentes', ComponenteCurricularViewSet)
-router.register(r'professores', ProfessorViewSet)
-router.register(r'turmas', TurmaViewSet)
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('api-token-auth/', views.obtain_auth_token, name='api-token-auth'),
     path('admin/', admin.site.urls),
+    path('api/', include('horarios.api.urls')),
 
-    path('turmas/professores/<int:pk>/', ListaTurmasProfessor.as_view()),
-    path('turmas/componentes/<cod>/', ListaTurmasComponente.as_view()),
-    path('turmas/semestre/<semestre>/', ListaTurmasSemestre.as_view()),
-
-    path('horarios/professores/<int:pk>/', ListaHorariosProfessor.as_view()),
-    path('horarios/componentes/<cod>/', ListaHorariosComponente.as_view()),
-    path('horarios/semestre/<semestre>/', ListaHorariosSemestre.as_view())
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Optional UI:
+    path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
