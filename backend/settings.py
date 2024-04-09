@@ -34,7 +34,8 @@ ALLOWED_HOSTS = ["*"]
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://main.d364oj6gtc2n8o.amplifyapp.com"
+    "https://main.d364oj6gtc2n8o.amplifyapp.com",
+    "https://horarios.ufersa.dev.br"
 ]
 
 # Application definition
