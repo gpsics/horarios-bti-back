@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
+from ..permissions import IsAdminOrReadOnly
 
 from horarios.models import ComponenteCurricular, Professor, Turma
 from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, TurmaSerializer, \
@@ -12,7 +13,7 @@ from .serializers import ComponenteCurricularSerializer, ProfessorSerializer, Tu
 
 class ComponenteCurricularViewSet(viewsets.ModelViewSet):
     serializer_class = ComponenteCurricularSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
     def get_queryset(self):
         return ComponenteCurricular.objects.all().order_by('nome_comp')
@@ -82,7 +83,7 @@ class ComponenteCurricularViewSet(viewsets.ModelViewSet):
 # View que está mostrando todos os objetos \criados de Professor
 class ProfessorViewSet(viewsets.ModelViewSet):
     serializer_class = ProfessorSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
     def get_queryset(self):
         return Professor.objects.all().order_by('nome_prof')
@@ -150,7 +151,7 @@ class ProfessorViewSet(viewsets.ModelViewSet):
 
 # View que está mostrando todos os objetos criados de Turma
 class TurmaViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
     def get_queryset(self):
         return Turma.objects.all()
@@ -222,7 +223,7 @@ class TurmaViewSet(viewsets.ModelViewSet):
 # APIView que mostra todos os horários de Turmas com mesmo componentes
 class HorariosViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = HorariosSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
     @action(methods=['get'], detail=True, url_path='componente', permission_classes=[IsAuthenticated])
     def horarios_comp(self, request, cod=None):

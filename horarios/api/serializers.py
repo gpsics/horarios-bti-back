@@ -73,7 +73,7 @@ class ComponenteCurricularSerializer(serializers.ModelSerializer):
             # Verifica se o componenete é obrigatório e se está com o número de semestre é igual a 0
             if data['num_semestre'] == 0 and data['obrigatorio']:
                 raise serializers.ValidationError({"num_semestre": "O componente quando obrigatório deve possuir um "
-                                                                   "semestre diferente de 0."})
+                                                                       "semestre diferente de 0."})
 
         return data
 
